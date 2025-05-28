@@ -1,398 +1,466 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
-
-// Firebase configuration (provided by the environment)
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-cpt-app';
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-// Initialize Firebase App
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-// Main App Component
-function App() {
-  const [currentScreen, setCurrentScreen] = useState('start'); // 'start', 'playing', 'results', 'settings'
-  const [userId, setUserId] = useState(null);
-  const [highScore, setHighScore] = useState(0);
-  const [lastGameScore, setLastGameScore] = useState(0);
-  const [charDisplayDuration, setCharDisplayDuration] = useState(500); // milliseconds
-  const [intervalBetweenChars, setIntervalBetweenChars] = useState(1500); // milliseconds
-  const [isAuthReady, setIsAuthReady] = useState(false);
-
-  // Firebase Authentication and Firestore Listener for High Score
-  useEffect(() => {
-    const signIn = async () => {
-      try {
-        if (initialAuthToken) {
-          await signInWithCustomToken(auth, initialAuthToken);
-        } else {
-          await signInAnonymously(auth);
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أداة تدريب الانتباه المستمر (CPT)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Base styling for the body */
+        body {
+            font-family: 'Inter', sans-serif; /* Using Inter font */
+            background-color: #f0f4f8; /* Light gray background */
+            color: #333; /* Dark gray text */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Full viewport height */
+            padding: 1rem; /* Padding around the content */
+            box-sizing: border-box; /* Include padding in element's total width and height */
         }
-      } catch (error) {
-        console.error("Firebase authentication error:", error);
-      }
-    };
-
-    signIn();
-
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUserId(user.uid);
-        setIsAuthReady(true);
-      } else {
-        setUserId(null);
-        setIsAuthReady(true); // Still ready, but no user logged in
-      }
-    });
-
-    return () => unsubscribe();
-  }, []); // Run only once on component mount
-
-  // Firestore listener for high score
-  useEffect(() => {
-    if (!isAuthReady || !userId) return;
-
-    const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/cpt_scores/high_score`);
-
-    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setHighScore(docSnap.data().value || 0);
-      } else {
-        setHighScore(0); // No high score yet
-      }
-    }, (error) => {
-      console.error("Error fetching high score:", error);
-    });
-
-    return () => unsubscribe();
-  }, [isAuthReady, userId]); // Re-run if auth state or userId changes
-
-  // Function to update high score in Firestore
-  const updateHighScore = useCallback(async (newScore) => {
-    if (!userId || newScore <= highScore) return; // Only update if it's a new high score
-
-    try {
-      const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/cpt_scores/high_score`);
-      await setDoc(userDocRef, { value: newScore }, { merge: true });
-      console.log("High score updated successfully!");
-    } catch (error) {
-      console.error("Error updating high score:", error);
-    }
-  }, [userId, highScore]);
-
-  // Render different screens based on currentScreen state
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4 font-inter text-white">
-      <div className="bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-3xl shadow-2xl p-8 w-full max-w-md text-center border border-white border-opacity-30">
-        <h1 className="text-4xl font-extrabold mb-6 text-white drop-shadow-lg">أداة تدريب الانتباه المستمر</h1>
-        <h2 className="text-2xl font-semibold mb-8 text-white drop-shadow-md">(CPT)</h2>
-
-        {currentScreen === 'start' && (
-          <StartScreen
-            userId={userId}
-            highScore={highScore}
-            onStart={() => setCurrentScreen('playing')}
-            onSettings={() => setCurrentScreen('settings')}
-            isAuthReady={isAuthReady}
-          />
-        )}
-
-        {currentScreen === 'playing' && (
-          <GameScreen
-            charDisplayDuration={charDisplayDuration}
-            intervalBetweenChars={intervalBetweenChars}
-            onGameEnd={(score) => {
-              setLastGameScore(score);
-              updateHighScore(score); // Attempt to update high score
-              setCurrentScreen('results');
-            }}
-          />
-        )}
-
-        {currentScreen === 'results' && (
-          <ResultsScreen
-            score={lastGameScore}
-            highScore={highScore}
-            onPlayAgain={() => setCurrentScreen('playing')}
-            onBackToHome={() => setCurrentScreen('start')}
-          />
-        )}
-
-        {currentScreen === 'settings' && (
-          <SettingsScreen
-            charDisplayDuration={charDisplayDuration}
-            setCharDisplayDuration={setCharDisplayDuration}
-            intervalBetweenChars={intervalBetweenChars}
-            setIntervalBetweenChars={setIntervalBetweenChars}
-            onBack={() => setCurrentScreen('start')}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Start Screen Component
-function StartScreen({ userId, highScore, onStart, onSettings, isAuthReady }) {
-  return (
-    <div className="flex flex-col items-center">
-      <p className="text-lg mb-4 text-white">
-        معرف المستخدم: {isAuthReady ? (userId || 'غير متاح') : 'جار التحميل...'}
-      </p>
-      <p className="text-xl font-bold mb-8 text-white">
-        أعلى نتيجة مسجلة: <span className="text-yellow-300">{highScore}</span>
-      </p>
-      <button
-        onClick={onStart}
-        className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 mb-4 text-2xl"
-      >
-        ابدأ الاختبار
-      </button>
-      <button
-        onClick={onSettings}
-        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 text-xl"
-      >
-        إعدادات التحدي
-      </button>
-    </div>
-  );
-}
-
-// Game Screen Component
-function GameScreen({ charDisplayDuration, intervalBetweenChars, onGameEnd }) {
-  const [currentChar, setCurrentChar] = useState('');
-  const [isX, setIsX] = useState(false);
-  const [score, setScore] = useState(0);
-  const [correctHits, setCorrectHits] = useState(0);
-  const [missedXs, setMissedXs] = useState(0);
-  const [incorrectHits, setIncorrectHits] = useState(0);
-  const [gameActive, setGameActive] = useState(false);
-  const [message, setMessage] = useState('اضغط "ابدأ" لبدء اللعبة');
-  const [roundCount, setRoundCount] = useState(0);
-  const totalRounds = 20; // Fixed number of rounds for the game
-
-  const timeoutRef = useRef(null);
-  const spacebarPressedRef = useRef(false);
-  const currentIsXRef = useRef(false);
-
-  // Function to start a new round
-  const startRound = useCallback(() => {
-    if (roundCount >= totalRounds) {
-      endGame();
-      return;
-    }
-
-    setRoundCount(prev => prev + 1);
-    spacebarPressedRef.current = false; // Reset spacebar flag for new round
-
-    // Decide if the character is 'X' (20% chance) or another random character
-    const charType = Math.random() < 0.2 ? 'X' : String.fromCharCode(65 + Math.floor(Math.random() * 25)); // A-Z
-    setCurrentChar(charType);
-    const isCurrentCharX = charType === 'X';
-    setIsX(isCurrentCharX);
-    currentIsXRef.current = isCurrentCharX; // Update ref for event listener
-
-    setMessage(''); // Clear any previous messages
-
-    // Set timeout for character display
-    timeoutRef.current = setTimeout(() => {
-      // If 'X' was displayed and spacebar was NOT pressed, it's a missed X
-      if (currentIsXRef.current && !spacebarPressedRef.current) {
-        setMissedXs(prev => prev + 1);
-        setScore(prev => Math.max(0, prev - 10)); // Penalize for missed X
-      }
-      setCurrentChar(''); // Hide character
-      // Set timeout for interval before next character
-      timeoutRef.current = setTimeout(startRound, intervalBetweenChars);
-    }, charDisplayDuration);
-  }, [roundCount, charDisplayDuration, intervalBetweenChars]);
-
-  // Function to handle spacebar press
-  const handleSpacebarPress = useCallback((event) => {
-    if (!gameActive) return;
-
-    if (event.code === 'Space') {
-      event.preventDefault(); // Prevent scrolling
-      if (spacebarPressedRef.current) return; // Already pressed for this round
-
-      spacebarPressedRef.current = true;
-
-      if (currentIsXRef.current) {
-        setCorrectHits(prev => prev + 1);
-        setScore(prev => prev + 10); // Reward for correct hit
-        setMessage('صحيح!');
-      } else {
-        setIncorrectHits(prev => prev + 1);
-        setScore(prev => Math.max(0, prev - 5)); // Penalize for incorrect hit
-        setMessage('خطأ!');
-      }
-    }
-  }, [gameActive]);
-
-  // Function to start the game
-  const startGame = () => {
-    setScore(0);
-    setCorrectHits(0);
-    setMissedXs(0);
-    setIncorrectHits(0);
-    setRoundCount(0);
-    setGameActive(true);
-    setMessage('استعد...');
-    // Initial delay before the first character appears
-    timeoutRef.current = setTimeout(startRound, 2000);
-  };
-
-  // Function to end the game
-  const endGame = useCallback(() => {
-    setGameActive(false);
-    clearTimeout(timeoutRef.current);
-    setCurrentChar('');
-    setMessage('انتهت اللعبة!');
-    onGameEnd(score); // Pass the final score to parent component
-  }, [score, onGameEnd]);
-
-  // Effect for keyboard event listener
-  useEffect(() => {
-    window.addEventListener('keydown', handleSpacebarPress);
-    return () => {
-      window.removeEventListener('keydown', handleSpacebarPress);
-      clearTimeout(timeoutRef.current); // Clean up timeout on unmount
-    };
-  }, [handleSpacebarPress]);
-
-  return (
-    <div className="flex flex-col items-center justify-center">
-      <p className="text-lg mb-4 text-white">
-        اضغط على "المسافة" (Spacebar) فقط عندما يظهر الحرف <span className="font-bold text-yellow-300">'X'</span>
-      </p>
-      <p className="text-lg mb-6 text-white">
-        تجاهل جميع الحروف الأخرى.
-      </p>
-
-      <div className="relative w-48 h-48 flex items-center justify-center bg-white bg-opacity-30 rounded-2xl mb-8 shadow-inner">
-        {currentChar && (
-          <span className={`text-8xl font-extrabold ${isX ? 'text-green-300' : 'text-red-300'} animate-fade-in-out`}>
-            {currentChar}
-          </span>
-        )}
-      </div>
-
-      <p className="text-2xl font-bold mb-4 text-white">{message}</p>
-      <p className="text-xl font-semibold mb-6 text-white">النتيجة: {score}</p>
-
-      {!gameActive && (
-        <button
-          onClick={startGame}
-          className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 text-xl"
-        >
-          ابدأ
-        </button>
-      )}
-
-      {gameActive && (
-        <div className="text-white text-lg mt-4">
-          <p>الجولة: {roundCount} من {totalRounds}</p>
-          <p>ضربات صحيحة: {correctHits}</p>
-          <p>ضربات خاطئة: {incorrectHits}</p>
-          <p>X مفقودة: {missedXs}</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Results Screen Component
-function ResultsScreen({ score, highScore, onPlayAgain, onBackToHome }) {
-  const isNewHighScore = score > (highScore || 0); // Check if current score is greater than previous high score
-
-  return (
-    <div className="flex flex-col items-center">
-      <h3 className="text-3xl font-bold mb-4 text-white">نتائج اللعبة</h3>
-      <p className="text-2xl mb-4 text-white">
-        نتيجة هذه الجولة: <span className="font-extrabold text-yellow-300">{score}</span>
-      </p>
-      {isNewHighScore && (
-        <p className="text-2xl font-bold text-green-300 mb-6 animate-bounce">
-          🎉 رقم قياسي جديد! 🎉
+        /* Main container for the application */
+        .container {
+            background-color: #ffffff; /* White background */
+            border-radius: 1.5rem; /* More rounded corners */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); /* Soft shadow */
+            padding: 2rem; /* Inner padding */
+            width: 100%; /* Full width on small screens */
+            max-width: 600px; /* Max width for better readability on large screens */
+            display: flex;
+            flex-direction: column; /* Stack elements vertically */
+            align-items: center; /* Center align items */
+            text-align: center; /* Center align text */
+        }
+        /* Area where the stimulus (letter) is displayed */
+        .display-area {
+            background-color: #e2e8f0; /* Light blue-gray background */
+            border-radius: 1rem; /* Rounded corners */
+            width: 100%;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 8rem; /* Large font for visibility */
+            font-weight: bold;
+            color: #2c5282; /* Dark blue text */
+            margin-bottom: 2rem;
+            user-select: none; /* Prevent text selection */
+            -webkit-user-select: none; /* For Safari */
+            -moz-user-select: none; /* For Firefox */
+            -ms-user-select: none; /* For IE/Edge */
+        }
+        /* General button styling using Tailwind's @apply */
+        .button {
+            @apply px-6 py-3 rounded-full font-semibold transition-all duration-300 ease-in-out transform hover:scale-105;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Button shadow */
+        }
+        /* Primary button color */
+        .button-primary {
+            @apply bg-blue-600 text-white hover:bg-blue-700;
+        }
+        /* Secondary button color */
+        .button-secondary {
+            @apply bg-gray-300 text-gray-800 hover:bg-gray-400;
+        }
+        /* Danger button color */
+        .button-danger {
+            @apply bg-red-600 text-white hover:bg-red-700;
+        }
+        /* Styling for feedback messages (correct/error/info) */
+        .feedback-message {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-top: 1rem;
+            min-height: 2rem; /* To prevent layout shifts when message appears/disappears */
+        }
+        .success {
+            color: #28a745; /* Green color for success */
+        }
+        .error {
+            color: #dc3545; /* Red color for error */
+        }
+        .info {
+            color: #007bff; /* Blue color for info */
+        }
+        /* Styling for settings and results panels */
+        .settings-panel {
+            background-color: #f7fafc; /* Lighter gray background */
+            border-radius: 1rem; /* Rounded corners */
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            width: 100%;
+        }
+        /* Styling for labels within settings panel */
+        .settings-panel label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: #4a5568; /* Darker gray text */
+            text-align: right; /* Align labels to the right for RTL */
+        }
+        /* Styling for range input sliders */
+        .settings-panel input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none; /* Remove default styling */
+            height: 8px;
+            border-radius: 5px;
+            background: #cbd5e0; /* Light gray track */
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        .settings-panel input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%; /* Circular thumb */
+            background: #4299e1; /* Blue thumb */
+            cursor: pointer;
+        }
+        .settings-panel input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4299e1;
+            cursor: pointer;
+        }
+        /* Styling for displaying current slider values */
+        .value-display {
+            font-weight: bold;
+            color: #2c5282; /* Dark blue text */
+            margin-right: 0.5rem; /* Space between value and label */
+        }
+        /* Responsive adjustments for smaller screens (mobile) */
+        @media (max-width: 640px) {
+            .display-area {
+                font-size: 6rem; /* Smaller font size */
+                height: 150px; /* Shorter height */
+            }
+            .button {
+                padding: 0.75rem 1.25rem; /* Smaller padding */
+                font-size: 0.9rem; /* Smaller font size */
+            }
+            .container {
+                padding: 1rem; /* Smaller padding */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold mb-4 text-blue-800">أداة تدريب الانتباه المستمر (CPT)</h1>
+        <p class="text-gray-600 mb-6">
+            اضغط على "المسافة" (Spacebar) فقط عندما يظهر الحرف <span class="font-bold text-blue-700">'X'</span>. تجاهل جميع الحروف الأخرى.
+            <br>
+            هدف هذه الأداة هو تدريب قدرتك على الانتباه المستمر والتركيز.
         </p>
-      )}
-      <p className="text-xl mb-8 text-white">
-        أعلى نتيجة مسجلة: <span className="font-bold text-yellow-300">{highScore}</span>
-      </p>
 
-      <button
-        onClick={onPlayAgain}
-        className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 mb-4 text-xl"
-      >
-        العب مرة أخرى
-      </button>
-      <button
-        onClick={onBackToHome}
-        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 text-xl"
-      >
-        العودة إلى الشاشة الرئيسية
-      </button>
+        <div id="displayArea" class="display-area">
+            <span id="stimulus">ابدأ</span>
+        </div>
+
+        <div id="feedback" class="feedback-message"></div>
+
+        <div class="flex flex-wrap justify-center gap-4 mt-4 w-full">
+            <button id="startButton" class="button button-primary">ابدأ الاختبار</button>
+            <button id="stopButton" class="button button-danger" style="display:none;">إيقاف الاختبار</button>
+            <button id="resetButton" class="button button-secondary" style="display:none;">إعادة تعيين</button>
+        </div>
+
+        <div id="resultsPanel" class="settings-panel mt-6 w-full" style="display:none;">
+            <h2 class="text-2xl font-bold mb-4 text-blue-700">النتائج</h2>
+            <p class="text-gray-700 text-lg mb-2">
+                <span class="font-semibold">إجمالي المحاولات:</span> <span id="totalTrials" class="value-display">0</span>
+            </p>
+            <p class="text-gray-700 text-lg mb-2">
+                <span class="font-semibold">الاستجابات الصحيحة (X):</span> <span id="correctHits" class="value-display">0</span>
+            </p>
+            <p class="text-gray-700 text-lg mb-2">
+                <span class="font-semibold">أخطاء الإغفال (لم تستجب لـ X):</span> <span id="omissionErrors" class="value-display">0</span>
+            </p>
+            <p class="text-gray-700 text-lg mb-2">
+                <span class="font-semibold">أخطاء الارتكاب (استجبت لغير X):</span> <span id="commissionErrors" class="value-display">0</span>
+            </p>
+            <p class="text-gray-700 text-lg mb-2">
+                <span class="font-semibold">متوسط وقت الاستجابة (لـ X):</span> <span id="avgReactionTime" class="value-display">0 مللي ثانية</span>
+            </p>
+        </div>
+
+        <div id="settingsPanel" class="settings-panel mt-6 w-full">
+            <h2 class="text-2xl font-bold mb-4 text-blue-700">إعدادات التحدي</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="stimulusDuration">مدة عرض الحرف (مللي ثانية): <span id="stimulusDurationValue" class="value-display">500</span></label>
+                    <input type="range" id="stimulusDuration" min="100" max="1000" value="500" step="50" class="w-full">
+                </div>
+                <div>
+                    <label for="interStimulusInterval">الفاصل بين الحروف (مللي ثانية): <span id="interStimulusIntervalValue" class="value-display">1500</span></label>
+                    <input type="range" id="interStimulusInterval" min="500" max="3000" value="1500" step="100" class="w-full">
+                </div>
+                <div>
+                    <label for="targetFrequency">تكرار ظهور 'X' (%): <span id="targetFrequencyValue" class="value-display">20</span></label>
+                    <input type="range" id="targetFrequency" min="5" max="50" value="20" step="5" class="w-full">
+                </div>
+                <div>
+                    <label for="testDuration">مدة الاختبار (ثانية): <span id="testDurationValue" class="value-display">120</span></label>
+                    <input type="range" id="testDuration" min="30" max="300" value="120" step="10" class="w-full">
+                </div>
+            </div>
+        </div>
     </div>
-  );
-}
 
-// Settings Screen Component
-function SettingsScreen({
-  charDisplayDuration,
-  setCharDisplayDuration,
-  intervalBetweenChars,
-  setIntervalBetweenChars,
-  onBack,
-}) {
-  return (
-    <div className="flex flex-col items-center w-full">
-      <h3 className="text-2xl font-bold mb-6 text-white">إعدادات التحدي</h3>
+    <script>
+        // Get DOM elements for display and controls
+        const stimulusDisplay = document.getElementById('stimulus');
+        const feedbackDisplay = document.getElementById('feedback');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const resetButton = document.getElementById('resetButton');
+        const resultsPanel = document.getElementById('resultsPanel');
+        const settingsPanel = document.getElementById('settingsPanel');
 
-      <div className="w-full mb-6">
-        <label htmlFor="displayDuration" className="block text-lg font-semibold mb-2 text-white">
-          مدة عرض الحرف (مللي ثانية): <span className="text-yellow-300">{charDisplayDuration}</span>
-        </label>
-        <input
-          type="range"
-          id="displayDuration"
-          min="100"
-          max="1000"
-          step="50"
-          value={charDisplayDuration}
-          onChange={(e) => setCharDisplayDuration(Number(e.target.value))}
-          className="w-full h-2 bg-blue-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
-        />
-      </div>
+        // Get DOM elements for settings input controls
+        const stimulusDurationInput = document.getElementById('stimulusDuration');
+        const interStimulusIntervalInput = document.getElementById('interStimulusInterval');
+        const targetFrequencyInput = document.getElementById('targetFrequency');
+        const testDurationInput = document.getElementById('testDuration');
 
-      <div className="w-full mb-8">
-        <label htmlFor="interval" className="block text-lg font-semibold mb-2 text-white">
-          الفاصل بين الحروف (مللي ثانية): <span className="text-yellow-300">{intervalBetweenChars}</span>
-        </label>
-        <input
-          type="range"
-          id="interval"
-          min="500"
-          max="3000"
-          step="100"
-          value={intervalBetweenChars}
-          onChange={(e) => setIntervalBetweenChars(Number(e.target.value))}
-          className="w-full h-2 bg-blue-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
-        />
-      </div>
+        // Get DOM elements for displaying current setting values
+        const stimulusDurationValue = document.getElementById('stimulusDurationValue');
+        const interStimulusIntervalValue = document.getElementById('interStimulusIntervalValue');
+        const targetFrequencyValue = document.getElementById('targetFrequencyValue');
+        const testDurationValue = document.getElementById('testDurationValue');
 
-      <button
-        onClick={onBack}
-        className="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 text-xl"
-      >
-        العودة
-      </button>
-    </div>
-  );
-}
+        // Game state variables
+        let isRunning = false; // Flag to check if the test is currently running
+        let timeoutId; // Stores the ID of the setTimeout for stimulus display
+        let currentStimulus = ''; // Stores the currently displayed letter
+        let stimulusShownTime = 0; // Timestamp when the current stimulus was shown
+        let hasResponded = false; // Flag to check if user has responded to the current stimulus
+        let targetLetter = 'X'; // The specific letter the user should respond to
 
-export default App;
+        // Performance metrics
+        let totalTrials = 0; // Total number of stimuli shown
+        let correctHits = 0; // Number of correct responses to target letter 'X'
+        let omissionErrors = 0; // Number of times 'X' was shown but no response was made
+        let commissionErrors = 0; // Number of times a non-target letter was shown but a response was made
+        let reactionTimes = []; // Array to store reaction times for correct hits
+        let testTimerId; // Stores the ID of the setTimeout for the overall test duration
+        let remainingTestTime = 0; // Remaining time for the test
+
+        // Game settings (initialized with default values from input elements)
+        let settings = {
+            stimulusDuration: parseInt(stimulusDurationInput.value), // Duration a stimulus is visible (ms)
+            interStimulusInterval: parseInt(interStimulusIntervalInput.value), // Time between stimuli (ms)
+            targetFrequency: parseInt(targetFrequencyInput.value) / 100, // Probability of 'X' appearing (as decimal)
+            testDuration: parseInt(testDurationInput.value) * 1000 // Total test duration (ms)
+        };
+
+        // Update settings and their display values when slider inputs change
+        stimulusDurationInput.oninput = () => {
+            settings.stimulusDuration = parseInt(stimulusDurationInput.value);
+            stimulusDurationValue.textContent = settings.stimulusDuration;
+        };
+        interStimulusIntervalInput.oninput = () => {
+            settings.interStimulusInterval = parseInt(interStimulusIntervalInput.value);
+            interStimulusIntervalValue.textContent = settings.interStimulusInterval;
+        };
+        targetFrequencyInput.oninput = () => {
+            settings.targetFrequency = parseInt(targetFrequencyInput.value) / 100;
+            targetFrequencyValue.textContent = parseInt(targetFrequencyInput.value);
+        };
+        testDurationInput.oninput = () => {
+            settings.testDuration = parseInt(testDurationInput.value) * 1000;
+            testDurationValue.textContent = parseInt(testDurationInput.value);
+        };
+
+        // Function to generate a random letter for the stimulus
+        function getRandomLetter() {
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; // All possible letters
+            let letter;
+            // Decide if the target letter 'X' should appear based on targetFrequency
+            if (Math.random() < settings.targetFrequency) {
+                letter = targetLetter; // Generate target letter
+            } else {
+                // Generate a random letter that is NOT the target letter
+                do {
+                    letter = alphabet[Math.floor(Math.random() * alphabet.length)];
+                } while (letter === targetLetter); // Ensure it's not 'X'
+            }
+            return letter;
+        }
+
+        // Function to display a stimulus on the screen
+        function showStimulus() {
+            // If the test is not running, stop the sequence
+            if (!isRunning) return;
+
+            totalTrials++; // Increment total trials count
+            hasResponded = false; // Reset response flag for the new stimulus
+
+            currentStimulus = getRandomLetter(); // Get a new random letter
+            stimulusDisplay.textContent = currentStimulus; // Display the letter
+            stimulusDisplay.classList.remove('text-green-600', 'text-red-600'); // Clear any previous feedback color
+            feedbackDisplay.textContent = ''; // Clear previous feedback message
+
+            stimulusShownTime = performance.now(); // Record the exact time the stimulus appeared
+
+            // Schedule the stimulus to be hidden after its duration
+            timeoutId = setTimeout(hideStimulus, settings.stimulusDuration);
+        }
+
+        // Function to hide the stimulus and check for omission errors
+        function hideStimulus() {
+            // If the test is not running, stop the sequence
+            if (!isRunning) return;
+
+            // Check for omission error: if current stimulus was 'X' and no response was made
+            if (currentStimulus === targetLetter && !hasResponded) {
+                omissionErrors++; // Increment omission error count
+                feedbackDisplay.textContent = 'خطأ: إغفال (لم تستجب لـ X)'; // Display error message
+                feedbackDisplay.className = 'feedback-message error'; // Apply error styling
+            }
+
+            stimulusDisplay.textContent = ''; // Clear the display area
+            currentStimulus = ''; // Reset current stimulus variable
+
+            // Schedule the next stimulus to appear after the inter-stimulus interval
+            timeoutId = setTimeout(showStimulus, settings.interStimulusInterval);
+        }
+
+        // Event handler for keyboard key presses (specifically spacebar)
+        function handleKeyPress(event) {
+            // If the test is not running, ignore key presses
+            if (!isRunning) return;
+
+            // Check if spacebar was pressed and user hasn't responded to current stimulus yet
+            if (event.code === 'Space' && !hasResponded) {
+                hasResponded = true; // Mark that user has responded to this stimulus
+                const reactionTime = performance.now() - stimulusShownTime; // Calculate reaction time
+
+                if (currentStimulus === targetLetter) {
+                    // Correct hit: user pressed spacebar for 'X'
+                    correctHits++; // Increment correct hits
+                    reactionTimes.push(reactionTime); // Store reaction time
+                    feedbackDisplay.textContent = `صحيح! وقت الاستجابة: ${Math.round(reactionTime)} مللي ثانية`; // Display success message
+                    feedbackDisplay.className = 'feedback-message success'; // Apply success styling
+                } else {
+                    // Commission error: user pressed spacebar for a non-target letter
+                    commissionErrors++; // Increment commission errors
+                    feedbackDisplay.textContent = 'خطأ: ارتكاب (استجبت لغير X)'; // Display error message
+                    feedbackDisplay.className = 'feedback-message error'; // Apply error styling
+                }
+            }
+        }
+
+        // Function to start the CPT test
+        function startTest() {
+            isRunning = true; // Set test running flag to true
+            startButton.style.display = 'none'; // Hide start button
+            stopButton.style.display = 'inline-block'; // Show stop button
+            resetButton.style.display = 'none'; // Hide reset button during test
+            resultsPanel.style.display = 'none'; // Hide results panel
+            settingsPanel.classList.add('opacity-50', 'pointer-events-none'); // Disable settings panel during test
+
+            // Reset all performance metrics for a new test session
+            totalTrials = 0;
+            correctHits = 0;
+            omissionErrors = 0;
+            commissionErrors = 0;
+            reactionTimes = [];
+            feedbackDisplay.textContent = ''; // Clear feedback
+            stimulusDisplay.textContent = 'استعد...'; // Display "Get Ready" message
+            stimulusDisplay.className = 'display-area info'; // Apply info styling
+
+            // Start the overall test timer
+            remainingTestTime = settings.testDuration;
+            testTimerId = setTimeout(endTest, remainingTestTime); // Schedule end of test
+
+            // Give a short delay (e.g., 1 second) before showing the first stimulus
+            setTimeout(() => {
+                stimulusDisplay.className = 'display-area'; // Reset display area styling
+                showStimulus(); // Start the stimulus sequence
+            }, 1000); // 1 second countdown
+        }
+
+        // Function to end the CPT test
+        function endTest() {
+            isRunning = false; // Set test running flag to false
+            clearTimeout(timeoutId); // Stop any pending stimulus timeouts
+            clearTimeout(testTimerId); // Stop the overall test timer
+
+            stimulusDisplay.textContent = 'انتهى الاختبار!'; // Display "Test Ended" message
+            stimulusDisplay.className = 'display-area info'; // Apply info styling
+            feedbackDisplay.textContent = 'انتهى الاختبار. انظر النتائج أدناه.'; // Display final feedback
+            feedbackDisplay.className = 'feedback-message info'; // Apply info styling
+
+            stopButton.style.display = 'none'; // Hide stop button
+            startButton.style.display = 'inline-block'; // Show start button again
+            resetButton.style.display = 'inline-block'; // Show reset button
+            settingsPanel.classList.remove('opacity-50', 'pointer-events-none'); // Re-enable settings panel
+
+            displayResults(); // Show the final results
+        }
+
+        // Function to display the calculated performance results
+        function displayResults() {
+            resultsPanel.style.display = 'block'; // Make the results panel visible
+            document.getElementById('totalTrials').textContent = totalTrials;
+            document.getElementById('correctHits').textContent = correctHits;
+            document.getElementById('omissionErrors').textContent = omissionErrors;
+            document.getElementById('commissionErrors').textContent = commissionErrors;
+
+            // Calculate average reaction time for correct hits
+            let avgRt = reactionTimes.length > 0
+                ? Math.round(reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length)
+                : 0; // If no correct hits, average is 0
+            document.getElementById('avgReactionTime').textContent = `${avgRt} مللي ثانية`;
+        }
+
+        // Function to reset the game to its initial state
+        function resetGame() {
+            isRunning = false; // Ensure test is not running
+            clearTimeout(timeoutId); // Clear any active stimulus timeouts
+            clearTimeout(testTimerId); // Clear the overall test timer
+
+            stimulusDisplay.textContent = 'ابدأ'; // Reset stimulus display text
+            stimulusDisplay.className = 'display-area'; // Reset stimulus display styling
+            feedbackDisplay.textContent = ''; // Clear feedback message
+            startButton.style.display = 'inline-block'; // Show start button
+            stopButton.style.display = 'none'; // Hide stop button
+            resetButton.style.display = 'none'; // Hide reset button
+            resultsPanel.style.display = 'none'; // Hide results panel
+            settingsPanel.classList.remove('opacity-50', 'pointer-events-none'); // Re-enable settings panel
+
+            // Reset all performance metrics
+            totalTrials = 0;
+            correctHits = 0;
+            omissionErrors = 0;
+            commissionErrors = 0;
+            reactionTimes = [];
+            remainingTestTime = 0;
+        }
+
+        // Event Listeners for buttons and keyboard input
+        startButton.addEventListener('click', startTest);
+        stopButton.addEventListener('click', endTest);
+        resetButton.addEventListener('click', resetGame);
+        document.addEventListener('keydown', handleKeyPress); // Listen for keyboard presses
+
+        // Initial setup of settings display values on page load
+        stimulusDurationValue.textContent = stimulusDurationInput.value;
+        interStimulusIntervalValue.textContent = interStimulusIntervalInput.value;
+        targetFrequencyValue.textContent = targetFrequencyInput.value;
+        testDurationValue.textContent = testDurationInput.value;
+
+        // Handle touch events for mobile devices to simulate spacebar press
+        // Tapping the display area will act as a response
+        stimulusDisplay.addEventListener('touchstart', (event) => {
+            event.preventDefault(); // Prevent default touch behavior (like scrolling)
+            handleKeyPress({ code: 'Space' }); // Simulate a spacebar key press
+        });
+    </script>
+</body>
+</html>
 
