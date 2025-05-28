@@ -1,698 +1,398 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>أداة تدريب الانتباه (مبسطة)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="manifest" href="/manifest.json">
-    <style>
-        /* Base styling for the body */
-        body {
-            font-family: 'Inter', sans-serif; /* Using Inter font */
-            background-color: #f0f4f8; /* Light gray background */
-            color: #333; /* Dark gray text */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh; /* Full viewport height */
-            padding: 1rem; /* Padding around the content */
-            box-sizing: border-box; /* Include padding in element's total width and height */
-            transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition for dark mode */
-        }
-        /* Dark mode styles */
-        body.dark {
-            background-color: #1a202c; /* Dark background */
-            color: #e2e8f0; /* Light text */
-        }
-        .container {
-            background-color: #ffffff; /* White background */
-            border-radius: 1.5rem; /* More rounded corners */
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); /* Soft shadow */
-            padding: 2rem; /* Inner padding */
-            width: 100%; /* Full width on small screens */
-            max-width: 600px; /* Max width for better readability on large screens */
-            display: flex;
-            flex-direction: column; /* Stack elements vertically */
-            align-items: center; /* Center align items */
-            text-align: center; /* Center align text */
-            transition: background-color 0.3s ease, box-shadow 0.3s ease; /* Smooth transition for dark mode */
-        }
-        body.dark .container {
-            background-color: #2d3748; /* Darker background for container */
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); /* Darker shadow */
-        }
-        /* Area where the stimulus (letter) is displayed */
-        .display-area {
-            background-color: #e2e8f0; /* Light blue-gray background */
-            border-radius: 1rem; /* Rounded corners */
-            width: 100%;
-            height: 200px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 8rem; /* Large font for visibility */
-            font-weight: bold;
-            color: #2c5282; /* Dark blue text */
-            margin-bottom: 2rem;
-            user-select: none; /* Prevent text selection */
-            -webkit-user-select: none; /* For Safari */
-            -moz-user-select: none; /* For Firefox */
-            -ms-user-select: none; /* For IE/Edge */
-            transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition for dark mode */
-            overflow: hidden; /* Hide overflow for animations */
-        }
-        body.dark .display-area {
-            background-color: #4a5568; /* Darker blue-gray background */
-            color: #a0aec0; /* Lighter text in dark mode */
-        }
-        /* Animation for stimulus */
-        .stimulus-enter {
-            opacity: 0;
-            transform: scale(0.8);
-        }
-        .stimulus-enter-active {
-            opacity: 1;
-            transform: scale(1);
-            transition: opacity 0.2s ease-out, transform 0.2s ease-out;
-        }
-        .stimulus-exit {
-            opacity: 1;
-            transform: scale(1);
-        }
-        .stimulus-exit-active {
-            opacity: 0;
-            transform: scale(0.8);
-            transition: opacity 0.2s ease-in, transform 0.2s ease-in;
-        }
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
-        /* General button styling using Tailwind's @apply */
-        .button {
-            @apply px-6 py-3 rounded-full font-semibold transition-all duration-300 ease-in-out transform hover:scale-105;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Button shadow */
-        }
-        /* Primary button color */
-        .button-primary {
-            @apply bg-blue-600 text-white hover:bg-blue-700;
-        }
-        /* Danger button color */
-        .button-danger {
-            @apply bg-red-600 text-white hover:bg-red-700;
-        }
-        /* Dark mode toggle button */
-        .dark-mode-toggle {
-            @apply absolute top-4 left-4 p-2 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors duration-300;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-        body.dark .dark-mode-toggle {
-            @apply bg-gray-700 text-gray-200 hover:bg-gray-600;
-        }
+// Firebase configuration (provided by the environment)
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-cpt-app';
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        /* Styling for feedback messages (correct/error/info) */
-        .feedback-message {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-top: 1rem;
-            min-height: 2rem; /* To prevent layout shifts when message appears/disappears */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem; /* Space between icon and text */
-            opacity: 0; /* Start hidden for animation */
-            transform: translateY(10px); /* Start slightly below */
-            transition: opacity 0.3s ease-out, transform 0.3s ease-out; /* Animation */
-        }
-        .feedback-message.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        .feedback-message svg {
-            width: 1.5em; /* Icon size relative to text */
-            height: 1.5em;
-        }
-        .success {
-            color: #28a745; /* Green color for success */
-        }
-        .error {
-            color: #dc3545; /* Red color for error */
-        }
-        .info {
-            color: #007bff; /* Blue color for info */
-        }
-        body.dark .success { color: #48bb78; } /* Lighter green for dark mode */
-        body.dark .error { color: #fc8181; }   /* Lighter red for dark mode */
-        body.dark .info { color: #63b3ed; }    /* Lighter blue for dark mode */
+// Initialize Firebase App
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-        /* Styling for results panels */
-        .results-panel { /* Renamed from settings-panel for clarity */
-            background-color: #f7fafc; /* Lighter gray background */
-            border-radius: 1rem; /* Rounded corners */
-            padding: 1.5rem;
-            margin-top: 1.5rem;
-            width: 100%;
-            transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition for dark mode */
-        }
-        body.dark .results-panel {
-            background-color: #4a5568; /* Darker background for panels */
-            color: #e2e8f0;
-        }
-        .results-panel label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: bold;
-            color: #4a5568; /* Darker gray text */
-            text-align: right; /* Align labels to the right for RTL */
-            transition: color 0.3s ease; /* Smooth transition for dark mode */
-        }
-        body.dark .results-panel label {
-            color: #cbd5e0; /* Lighter text for labels in dark mode */
-        }
-        /* Styling for displaying current values */
-        .value-display {
-            font-weight: bold;
-            color: #2c5282; /* Dark blue text */
-            margin-right: 0.5rem; /* Space between value and label */
-            transition: color 0.3s ease; /* Smooth transition for dark mode */
-        }
-        body.dark .value-display {
-            color: #a0aec0; /* Lighter text for values in dark mode */
-        }
-        /* Responsive adjustments for smaller screens (mobile) */
-        @media (max-width: 640px) {
-            .display-area {
-                font-size: 6rem; /* Smaller font size */
-                height: 150px; /* Shorter height */
-            }
-            .button {
-                padding: 0.75rem 1.25rem; /* Smaller padding */
-                font-size: 0.9rem; /* Smaller font size */
-            }
-            .container {
-                padding: 1rem; /* Smaller padding */
-            }
-        }
-    </style>
-</head>
-<body class="light">
-    <button id="darkModeToggle" class="dark-mode-toggle">
-        <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
-            <path d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 12 2.25ZM12 19.5a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V20.25a.75.75 0 0 1 .75-.75ZM20.25 12a.75.75 0 0 1 .75-.75h2.25a.75.75 0 0 1 0 1.5H21a.75.75 0 0 1-.75-.75ZM3 12a.75.75 0 0 1 .75-.75H6a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12ZM18.636 18.636a.75.75 0 0 1 0 1.061l-1.591 1.59a.75.75 0 0 1-1.061 0 .75.75 0 0 1 0-1.061l1.591-1.591a.75.75 0 0 1 1.061 0ZM5.061 5.061a.75.75 0 0 1 0 1.061l-1.591 1.591a.75.75 0 1 1-1.061-1.061l1.591-1.591a.75.75 0 0 1 1.061 0ZM18.636 5.061a.75.75 0 0 1 1.061 0l1.591 1.591a.75.75 0 0 1-1.061 1.061l-1.591-1.591a.75.75 0 0 1 0-1.061ZM5.061 18.636a.75.75 0 0 1 1.061 0l1.591 1.591a.75.75 0 1 1-1.061 1.061l-1.591-1.591a.75.75 0 0 1 0-1.061Z" />
-        </svg>
-        <svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6" style="display:none;">
-            <path fill-rule="evenodd" d="M9.528 1.718a.75.75 0 0 1 .758-.02L12 2.77l1.714-.99a.75.75 0 0 1 .758.022 8.5 8.5 0 0 1 8.243 8.243.75.75 0 0 1-.022.758l-1.715 1.715.99 1.714a.75.75 0 0 1-.02 1.061 8.5 8.5 0 0 1-8.243 8.243.75.75 0 0 1-.758-.022L12 21.23l-1.714.99a.75.75 0 0 1-.758-.022A8.5 8.5 0 0 1 2.25 12.75a.75.75 0 0 1 .022-.758l1.715-1.715-.99-1.714a.75.75 0 0 1 .02-1.061A8.5 8.5 0 0 1 9.528 1.718ZM12 6a6 6 0 1 0 0 12V6Z" clip-rule="evenodd" />
-        </svg>
-    </button>
+// Main App Component
+function App() {
+  const [currentScreen, setCurrentScreen] = useState('start'); // 'start', 'playing', 'results', 'settings'
+  const [userId, setUserId] = useState(null);
+  const [highScore, setHighScore] = useState(0);
+  const [lastGameScore, setLastGameScore] = useState(0);
+  const [charDisplayDuration, setCharDisplayDuration] = useState(500); // milliseconds
+  const [intervalBetweenChars, setIntervalBetweenChars] = useState(1500); // milliseconds
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
-    <div class="container">
-        <h1 class="text-3xl font-bold mb-4 text-blue-800 dark:text-blue-300">أداة تدريب الانتباه المستمر (CPT)</h1>
-        <p id="userIdDisplay" class="text-gray-500 text-sm mt-2 mb-4 dark:text-gray-400">معرف المستخدم: جار التحميل...</p>
-        <p class="text-gray-600 mb-6 dark:text-gray-300">
-            اضغط على "المسافة" (Spacebar) فقط عندما يظهر الحرف <span class="font-bold text-blue-700 dark:text-blue-400">'X'</span>. تجاهل جميع الحروف الأخرى.
-            <br>
-            هدف هذه الأداة هو تدريب قدرتك على الانتباه المستمر والتركيز.
+  // Firebase Authentication and Firestore Listener for High Score
+  useEffect(() => {
+    const signIn = async () => {
+      try {
+        if (initialAuthToken) {
+          await signInWithCustomToken(auth, initialAuthToken);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (error) {
+        console.error("Firebase authentication error:", error);
+      }
+    };
+
+    signIn();
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserId(user.uid);
+        setIsAuthReady(true);
+      } else {
+        setUserId(null);
+        setIsAuthReady(true); // Still ready, but no user logged in
+      }
+    });
+
+    return () => unsubscribe();
+  }, []); // Run only once on component mount
+
+  // Firestore listener for high score
+  useEffect(() => {
+    if (!isAuthReady || !userId) return;
+
+    const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/cpt_scores/high_score`);
+
+    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setHighScore(docSnap.data().value || 0);
+      } else {
+        setHighScore(0); // No high score yet
+      }
+    }, (error) => {
+      console.error("Error fetching high score:", error);
+    });
+
+    return () => unsubscribe();
+  }, [isAuthReady, userId]); // Re-run if auth state or userId changes
+
+  // Function to update high score in Firestore
+  const updateHighScore = useCallback(async (newScore) => {
+    if (!userId || newScore <= highScore) return; // Only update if it's a new high score
+
+    try {
+      const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/cpt_scores/high_score`);
+      await setDoc(userDocRef, { value: newScore }, { merge: true });
+      console.log("High score updated successfully!");
+    } catch (error) {
+      console.error("Error updating high score:", error);
+    }
+  }, [userId, highScore]);
+
+  // Render different screens based on currentScreen state
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4 font-inter text-white">
+      <div className="bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-3xl shadow-2xl p-8 w-full max-w-md text-center border border-white border-opacity-30">
+        <h1 className="text-4xl font-extrabold mb-6 text-white drop-shadow-lg">أداة تدريب الانتباه المستمر</h1>
+        <h2 className="text-2xl font-semibold mb-8 text-white drop-shadow-md">(CPT)</h2>
+
+        {currentScreen === 'start' && (
+          <StartScreen
+            userId={userId}
+            highScore={highScore}
+            onStart={() => setCurrentScreen('playing')}
+            onSettings={() => setCurrentScreen('settings')}
+            isAuthReady={isAuthReady}
+          />
+        )}
+
+        {currentScreen === 'playing' && (
+          <GameScreen
+            charDisplayDuration={charDisplayDuration}
+            intervalBetweenChars={intervalBetweenChars}
+            onGameEnd={(score) => {
+              setLastGameScore(score);
+              updateHighScore(score); // Attempt to update high score
+              setCurrentScreen('results');
+            }}
+          />
+        )}
+
+        {currentScreen === 'results' && (
+          <ResultsScreen
+            score={lastGameScore}
+            highScore={highScore}
+            onPlayAgain={() => setCurrentScreen('playing')}
+            onBackToHome={() => setCurrentScreen('start')}
+          />
+        )}
+
+        {currentScreen === 'settings' && (
+          <SettingsScreen
+            charDisplayDuration={charDisplayDuration}
+            setCharDisplayDuration={setCharDisplayDuration}
+            intervalBetweenChars={intervalBetweenChars}
+            setIntervalBetweenChars={setIntervalBetweenChars}
+            onBack={() => setCurrentScreen('start')}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Start Screen Component
+function StartScreen({ userId, highScore, onStart, onSettings, isAuthReady }) {
+  return (
+    <div className="flex flex-col items-center">
+      <p className="text-lg mb-4 text-white">
+        معرف المستخدم: {isAuthReady ? (userId || 'غير متاح') : 'جار التحميل...'}
+      </p>
+      <p className="text-xl font-bold mb-8 text-white">
+        أعلى نتيجة مسجلة: <span className="text-yellow-300">{highScore}</span>
+      </p>
+      <button
+        onClick={onStart}
+        className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 mb-4 text-2xl"
+      >
+        ابدأ الاختبار
+      </button>
+      <button
+        onClick={onSettings}
+        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 text-xl"
+      >
+        إعدادات التحدي
+      </button>
+    </div>
+  );
+}
+
+// Game Screen Component
+function GameScreen({ charDisplayDuration, intervalBetweenChars, onGameEnd }) {
+  const [currentChar, setCurrentChar] = useState('');
+  const [isX, setIsX] = useState(false);
+  const [score, setScore] = useState(0);
+  const [correctHits, setCorrectHits] = useState(0);
+  const [missedXs, setMissedXs] = useState(0);
+  const [incorrectHits, setIncorrectHits] = useState(0);
+  const [gameActive, setGameActive] = useState(false);
+  const [message, setMessage] = useState('اضغط "ابدأ" لبدء اللعبة');
+  const [roundCount, setRoundCount] = useState(0);
+  const totalRounds = 20; // Fixed number of rounds for the game
+
+  const timeoutRef = useRef(null);
+  const spacebarPressedRef = useRef(false);
+  const currentIsXRef = useRef(false);
+
+  // Function to start a new round
+  const startRound = useCallback(() => {
+    if (roundCount >= totalRounds) {
+      endGame();
+      return;
+    }
+
+    setRoundCount(prev => prev + 1);
+    spacebarPressedRef.current = false; // Reset spacebar flag for new round
+
+    // Decide if the character is 'X' (20% chance) or another random character
+    const charType = Math.random() < 0.2 ? 'X' : String.fromCharCode(65 + Math.floor(Math.random() * 25)); // A-Z
+    setCurrentChar(charType);
+    const isCurrentCharX = charType === 'X';
+    setIsX(isCurrentCharX);
+    currentIsXRef.current = isCurrentCharX; // Update ref for event listener
+
+    setMessage(''); // Clear any previous messages
+
+    // Set timeout for character display
+    timeoutRef.current = setTimeout(() => {
+      // If 'X' was displayed and spacebar was NOT pressed, it's a missed X
+      if (currentIsXRef.current && !spacebarPressedRef.current) {
+        setMissedXs(prev => prev + 1);
+        setScore(prev => Math.max(0, prev - 10)); // Penalize for missed X
+      }
+      setCurrentChar(''); // Hide character
+      // Set timeout for interval before next character
+      timeoutRef.current = setTimeout(startRound, intervalBetweenChars);
+    }, charDisplayDuration);
+  }, [roundCount, charDisplayDuration, intervalBetweenChars]);
+
+  // Function to handle spacebar press
+  const handleSpacebarPress = useCallback((event) => {
+    if (!gameActive) return;
+
+    if (event.code === 'Space') {
+      event.preventDefault(); // Prevent scrolling
+      if (spacebarPressedRef.current) return; // Already pressed for this round
+
+      spacebarPressedRef.current = true;
+
+      if (currentIsXRef.current) {
+        setCorrectHits(prev => prev + 1);
+        setScore(prev => prev + 10); // Reward for correct hit
+        setMessage('صحيح!');
+      } else {
+        setIncorrectHits(prev => prev + 1);
+        setScore(prev => Math.max(0, prev - 5)); // Penalize for incorrect hit
+        setMessage('خطأ!');
+      }
+    }
+  }, [gameActive]);
+
+  // Function to start the game
+  const startGame = () => {
+    setScore(0);
+    setCorrectHits(0);
+    setMissedXs(0);
+    setIncorrectHits(0);
+    setRoundCount(0);
+    setGameActive(true);
+    setMessage('استعد...');
+    // Initial delay before the first character appears
+    timeoutRef.current = setTimeout(startRound, 2000);
+  };
+
+  // Function to end the game
+  const endGame = useCallback(() => {
+    setGameActive(false);
+    clearTimeout(timeoutRef.current);
+    setCurrentChar('');
+    setMessage('انتهت اللعبة!');
+    onGameEnd(score); // Pass the final score to parent component
+  }, [score, onGameEnd]);
+
+  // Effect for keyboard event listener
+  useEffect(() => {
+    window.addEventListener('keydown', handleSpacebarPress);
+    return () => {
+      window.removeEventListener('keydown', handleSpacebarPress);
+      clearTimeout(timeoutRef.current); // Clean up timeout on unmount
+    };
+  }, [handleSpacebarPress]);
+
+  return (
+    <div className="flex flex-col items-center justify-center">
+      <p className="text-lg mb-4 text-white">
+        اضغط على "المسافة" (Spacebar) فقط عندما يظهر الحرف <span className="font-bold text-yellow-300">'X'</span>
+      </p>
+      <p className="text-lg mb-6 text-white">
+        تجاهل جميع الحروف الأخرى.
+      </p>
+
+      <div className="relative w-48 h-48 flex items-center justify-center bg-white bg-opacity-30 rounded-2xl mb-8 shadow-inner">
+        {currentChar && (
+          <span className={`text-8xl font-extrabold ${isX ? 'text-green-300' : 'text-red-300'} animate-fade-in-out`}>
+            {currentChar}
+          </span>
+        )}
+      </div>
+
+      <p className="text-2xl font-bold mb-4 text-white">{message}</p>
+      <p className="text-xl font-semibold mb-6 text-white">النتيجة: {score}</p>
+
+      {!gameActive && (
+        <button
+          onClick={startGame}
+          className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 text-xl"
+        >
+          ابدأ
+        </button>
+      )}
+
+      {gameActive && (
+        <div className="text-white text-lg mt-4">
+          <p>الجولة: {roundCount} من {totalRounds}</p>
+          <p>ضربات صحيحة: {correctHits}</p>
+          <p>ضربات خاطئة: {incorrectHits}</p>
+          <p>X مفقودة: {missedXs}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Results Screen Component
+function ResultsScreen({ score, highScore, onPlayAgain, onBackToHome }) {
+  const isNewHighScore = score > (highScore || 0); // Check if current score is greater than previous high score
+
+  return (
+    <div className="flex flex-col items-center">
+      <h3 className="text-3xl font-bold mb-4 text-white">نتائج اللعبة</h3>
+      <p className="text-2xl mb-4 text-white">
+        نتيجة هذه الجولة: <span className="font-extrabold text-yellow-300">{score}</span>
+      </p>
+      {isNewHighScore && (
+        <p className="text-2xl font-bold text-green-300 mb-6 animate-bounce">
+          🎉 رقم قياسي جديد! 🎉
         </p>
+      )}
+      <p className="text-xl mb-8 text-white">
+        أعلى نتيجة مسجلة: <span className="font-bold text-yellow-300">{highScore}</span>
+      </p>
 
-        <div id="globalBestResultsPanel" class="results-panel mt-6 w-full">
-            <h2 class="text-2xl font-bold mb-4 text-purple-700 dark:text-purple-400">أفضل نتيجة عالمية</h2>
-            <p class="text-gray-700 text-lg mb-2 dark:text-gray-200">
-                <span class="font-semibold">معرف المستخدم:</span> <span id="globalBestUserId" class="value-display">N/A</span>
-            </p>
-            <p class="text-gray-700 text-lg mb-2 dark:text-gray-200">
-                <span class="font-semibold">إجمالي المحاولات:</span> <span id="globalBestTotalTrials" class="value-display">N/A</span>
-            </p>
-            <p class="text-gray-700 text-lg mb-2 dark:text-gray-200">
-                <span class="font-semibold">الاستجابات الصحيحة (X):</span> <span id="globalBestCorrectHits" class="value-display">N/A</span>
-            </p>
-            <p class="text-gray-700 text-lg mb-2 dark:text-gray-200">
-                <span class="font-semibold">أخطاء الإغفال:</span> <span id="globalBestOmissionErrors" class="value-display">N/A</span>
-            </p>
-            <p class="text-gray-700 text-lg mb-2 dark:text-gray-200">
-                <span class="font-semibold">أخطاء الارتكاب:</span> <span id="globalBestCommissionErrors" class="value-display">N/A</span>
-            </p>
-            <p class="text-gray-700 text-lg mb-2 dark:text-gray-200">
-                <span class="font-semibold">متوسط وقت الاستجابة:</span> <span id="globalBestAvgReactionTime" class="value-display">N/A</span>
-            </p>
-            <p class="text-gray-700 text-lg mb-2 dark:text-gray-200">
-                <span class="font-semibold">تاريخ الاختبار:</span> <span id="globalBestTestDate" class="value-display">N/A</span>
-            </p>
-        </div>
+      <button
+        onClick={onPlayAgain}
+        className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 mb-4 text-xl"
+      >
+        العب مرة أخرى
+      </button>
+      <button
+        onClick={onBackToHome}
+        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 text-xl"
+      >
+        العودة إلى الشاشة الرئيسية
+      </button>
+    </div>
+  );
+}
 
-        <div id="displayArea" class="display-area mt-6">
-            <span id="stimulus">ابدأ</span>
-        </div>
+// Settings Screen Component
+function SettingsScreen({
+  charDisplayDuration,
+  setCharDisplayDuration,
+  intervalBetweenChars,
+  setIntervalBetweenChars,
+  onBack,
+}) {
+  return (
+    <div className="flex flex-col items-center w-full">
+      <h3 className="text-2xl font-bold mb-6 text-white">إعدادات التحدي</h3>
 
-        <div id="feedback" class="feedback-message"></div>
+      <div className="w-full mb-6">
+        <label htmlFor="displayDuration" className="block text-lg font-semibold mb-2 text-white">
+          مدة عرض الحرف (مللي ثانية): <span className="text-yellow-300">{charDisplayDuration}</span>
+        </label>
+        <input
+          type="range"
+          id="displayDuration"
+          min="100"
+          max="1000"
+          step="50"
+          value={charDisplayDuration}
+          onChange={(e) => setCharDisplayDuration(Number(e.target.value))}
+          className="w-full h-2 bg-blue-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
+        />
+      </div>
 
-        <div class="flex flex-wrap justify-center gap-4 mt-4 w-full">
-            <button id="startButton" class="button button-primary">ابدأ الاختبار</button>
-            <button id="stopButton" class="button button-danger" style="display:none;">إيقاف الاختبار</button>
-        </div>
+      <div className="w-full mb-8">
+        <label htmlFor="interval" className="block text-lg font-semibold mb-2 text-white">
+          الفاصل بين الحروف (مللي ثانية): <span className="text-yellow-300">{intervalBetweenChars}</span>
+        </label>
+        <input
+          type="range"
+          id="interval"
+          min="500"
+          max="3000"
+          step="100"
+          value={intervalBetweenChars}
+          onChange={(e) => setIntervalBetweenChars(Number(e.target.value))}
+          className="w-full h-2 bg-blue-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
+        />
+      </div>
 
-        </div>
+      <button
+        onClick={onBack}
+        className="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 text-xl"
+      >
+        العودة
+      </button>
+    </div>
+  );
+}
 
-    <script type="module">
-        // Import necessary Firebase modules
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, collection, query, onSnapshot, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Firebase Configuration (تم توفيرها بواسطة المستخدم)
-        // IMPORTANT: In a production environment, this should ideally be loaded from environment variables
-        // or a secure configuration service, not hardcoded.
-        const firebaseConfig = {
-          apiKey: "AIzaSyBTpPzx_WtpAWSnb0yHovaeS0L_lQU7g-s",
-          authDomain: "myattentionapp.firebaseapp.com",
-          projectId: "myattentionapp",
-          storageBucket: "myattentionapp.firebasestorage.app",
-          messagingSenderId: "504651885502",
-          appId: "1:504651885502:web:4e997e0e4c9e31bc8e67ef",
-          measurementId: "G-REXERZWK5G"
-        };
-
-        // Global app ID (from Canvas environment, fallback for local testing)
-        // هذا المتغير يستخدم لتحديد مسار البيانات في Firestore.
-        // في بيئة Canvas، يتم توفيره تلقائيًا. خارجها، نستخدم قيمة افتراضية.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // Firebase instances
-        let app;
-        let db;
-        let auth;
-        let userId = null; // Stores the current user's ID
-        let isAuthReady = false; // Flag to ensure Firebase authentication is complete before database operations
-        let unsubscribeGlobalBest = null; // Stores the unsubscribe function for global best listener
-
-        // Get DOM elements for display and controls
-        const stimulusDisplay = document.getElementById('stimulus');
-        const feedbackDisplay = document.getElementById('feedback');
-        const startButton = document.getElementById('startButton');
-        const stopButton = document.getElementById('stopButton');
-        const globalBestResultsPanel = document.getElementById('globalBestResultsPanel'); // Panel for global best
-        const userIdDisplay = document.getElementById('userIdDisplay'); // Element to display user ID
-        const darkModeToggle = document.getElementById('darkModeToggle'); // Dark mode toggle button
-        const sunIcon = document.getElementById('sunIcon'); // Sun icon for dark mode toggle
-        const moonIcon = document.getElementById('moonIcon'); // Moon icon for dark mode toggle
-
-        // Get DOM elements for global best test results display
-        const globalBestUserId = document.getElementById('globalBestUserId');
-        const globalBestTotalTrials = document.getElementById('globalBestTotalTrials');
-        const globalBestCorrectHits = document.getElementById('globalBestCorrectHits');
-        const globalBestOmissionErrors = document.getElementById('globalBestOmissionErrors');
-        const globalBestCommissionErrors = document.getElementById('globalBestCommissionErrors');
-        const globalBestAvgReactionTime = document.getElementById('globalBestAvgReactionTime');
-        const globalBestTestDate = document.getElementById('globalBestTestDate');
-
-
-        // Game state variables
-        let isRunning = false; // Flag to check if the test is currently running
-        let timeoutId; // Stores the ID of the setTimeout for stimulus display
-        let currentStimulus = ''; // Stores the currently displayed letter
-        let stimulusShownTime = 0; // Timestamp when the current stimulus was shown
-        let hasResponded = false; // Flag to check if user has responded to the current stimulus
-        let targetLetter = 'X'; // The specific letter the user should respond to
-
-        // Performance metrics for the current test (simplified to only what's needed for global best comparison)
-        let totalTrials = 0; // Total number of stimuli shown
-        let correctHits = 0; // Number of correct responses to target letter 'X'
-        let omissionErrors = 0; // Number of times 'X' was shown but no response was made
-        let commissionErrors = 0; // Number of times a non-target letter was shown but a response was made
-        let reactionTimes = []; // Array to store reaction times for correct hits
-        let testTimerId; // Stores the ID of the setTimeout for the overall test duration
-        let testStartTime = 0; // Timestamp when the test started
-
-        // Game settings (hardcoded to default values, as settings panel is removed)
-        let settings = {
-            stimulusDuration: 500, // Duration a stimulus is visible (ms)
-            interStimulusInterval: 1500, // Time between stimuli (ms)
-            targetFrequency: 0.20, // Probability of 'X' appearing (as decimal)
-            testDuration: 120 * 1000 // Total test duration (ms)
-        };
-
-        // Function to generate a random letter for the stimulus
-        function getRandomLetter() {
-            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; // All possible letters
-            let letter;
-            // Decide if the target letter 'X' should appear based on targetFrequency
-            if (Math.random() < settings.targetFrequency) {
-                letter = targetLetter; // Generate target letter
-            } else {
-                // Generate a random letter that is NOT the target letter
-                do {
-                    letter = alphabet[Math.floor(Math.random() * alphabet.length)];
-                } while (letter === targetLetter); // Ensure it's not 'X'
-            }
-            return letter;
-        }
-
-        // Function to display a stimulus on the screen
-        function showStimulus() {
-            // If the test is not running, stop the sequence
-            if (!isRunning) return;
-
-            totalTrials++; // Increment total trials count
-            hasResponded = false; // Reset response flag for the new stimulus
-
-            currentStimulus = getRandomLetter(); // Set currentStimulus BEFORE displaying
-            stimulusDisplay.textContent = currentStimulus; // Display the letter
-            stimulusDisplay.classList.add('stimulus-enter-active'); // Add animation class
-
-            feedbackDisplay.textContent = ''; // Clear previous feedback message
-            feedbackDisplay.classList.remove('show', 'success', 'error', 'info'); // Hide and reset feedback
-
-            stimulusShownTime = performance.now(); // Record the exact time the stimulus appeared
-
-            // Schedule the stimulus to be hidden after its duration
-            timeoutId = setTimeout(hideStimulus, settings.stimulusDuration);
-        }
-
-        // Function to hide the stimulus and check for omission errors
-        function hideStimulus() {
-            // If the test is not running, stop the sequence
-            if (!isRunning) return;
-
-            stimulusDisplay.classList.remove('stimulus-enter-active'); // Remove enter class
-            stimulusDisplay.classList.add('stimulus-exit-active'); // Add exit animation class
-
-            // Check for omission error: if current stimulus was 'X' and no response was made
-            if (currentStimulus === targetLetter && !hasResponded) {
-                omissionErrors++; // Increment omission error count
-                displayFeedback('خطأ: إغفال (لم تستجب لـ X)', 'error');
-            }
-
-            // After animation, clear content and schedule next stimulus
-            setTimeout(() => {
-                stimulusDisplay.textContent = ''; // Clear the display area
-                stimulusDisplay.classList.remove('stimulus-exit-active'); // Remove exit class
-                currentStimulus = ''; // Reset current stimulus variable after checks
-                timeoutId = setTimeout(showStimulus, settings.interStimulusInterval);
-            }, 200); // Match CSS transition duration
-        }
-
-        // Function to display feedback with icon and animation
-        function displayFeedback(message, type) {
-            let iconSvg = '';
-            // SVG icons for feedback messages
-            if (type === 'success') {
-                iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" /></svg>`;
-            } else if (type === 'error') {
-                iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" /></svg>`;
-            } else { // For 'info' type
-                iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm11.39-2.721a.75.75 0 0 0-1.06-1.06l-3.36 3.36a.75.75 0 0 0 1.06 1.06l3.36-3.36Z" clip-rule="evenodd" /></svg>`;
-            }
-            feedbackDisplay.innerHTML = `${iconSvg} ${message}`;
-            feedbackDisplay.className = `feedback-message ${type} show`;
-        }
-
-        // Event handler for keyboard key presses (specifically spacebar)
-        function handleKeyPress(event) {
-            // If the test is not running, ignore key presses
-            if (!isRunning) return;
-
-            // Check if spacebar was pressed and user hasn't responded to current stimulus yet
-            if (event.code === 'Space' && !hasResponded) {
-                hasResponded = true; // Mark that user has responded to this stimulus
-                const reactionTime = performance.now() - stimulusShownTime; // Calculate reaction time
-
-                if (currentStimulus === targetLetter) {
-                    // Correct hit: user pressed spacebar for 'X'
-                    correctHits++; // Increment correct hits
-                    reactionTimes.push(reactionTime); // Store reaction time
-                    displayFeedback(`صحيح! وقت الاستجابة: ${Math.round(reactionTime)} مللي ثانية`, 'success');
-                } else {
-                    // Commission error: user pressed spacebar for a non-target letter
-                    commissionErrors++; // Increment commission errors
-                    displayFeedback('خطأ: ارتكاب (استجبت لغير X)', 'error');
-                }
-            }
-        }
-
-        // Helper function to compare two results and determine which is better
-        // Criteria: 1. Lowest commissionErrors, 2. Lowest omissionErrors, 3. Highest correctHits, 4. Lowest avgReactionTime
-        function isResultBetter(newResult, currentBest) {
-            if (!currentBest) return true; // If no current best, new result is always better
-
-            // 1. Compare commissionErrors (lower is better)
-            if (newResult.commissionErrors !== currentBest.commissionErrors) {
-                return newResult.commissionErrors < currentBest.commissionErrors;
-            }
-            // 2. Compare omissionErrors (lower is better)
-            if (newResult.omissionErrors !== currentBest.omissionErrors) {
-                return newResult.omissionErrors < currentBest.omissionErrors;
-            }
-            // 3. Compare correctHits (higher is better)
-            if (newResult.correctHits !== currentBest.correctHits) {
-                return newResult.correctHits > currentBest.correctHits;
-            }
-            // 4. Compare avgReactionTime (lower is better)
-            return newResult.avgReactionTime < currentBest.avgReactionTime;
-        }
-
-        // Function to update the display of global best test results
-        function updateGlobalBestResultsDisplay(results) {
-            if (results) {
-                globalBestUserId.textContent = results.userId || 'N/A';
-                globalBestTotalTrials.textContent = results.totalTrials || 'N/A';
-                globalBestCorrectHits.textContent = results.correctHits || 'N/A';
-                globalBestOmissionErrors.textContent = results.omissionErrors || 'N/A';
-                globalBestCommissionErrors.textContent = results.commissionErrors || 'N/A';
-                globalBestAvgReactionTime.textContent = results.avgReactionTime ? `${Math.round(results.avgReactionTime)} مللي ثانية` : 'N/A';
-                if (results.timestamp && results.timestamp.toDate) {
-                    const date = results.timestamp.toDate();
-                    globalBestTestDate.textContent = date.toLocaleString('ar-EG', {
-                        year: 'numeric', month: 'short', day: 'numeric',
-                        hour: '2-digit', minute: '2-digit'
-                    });
-                } else {
-                    globalBestTestDate.textContent = 'N/A';
-                }
-            } else {
-                // Reset display if no global best
-                globalBestUserId.textContent = 'N/A';
-                globalBestTotalTrials.textContent = 'N/A';
-                globalBestCorrectHits.textContent = 'N/A';
-                globalBestOmissionErrors.textContent = 'N/A';
-                globalBestCommissionErrors.textContent = 'N/A';
-                globalBestAvgReactionTime.textContent = 'N/A';
-                globalBestTestDate.textContent = 'N/A';
-            }
-        }
-
-        // Function to save current test results to Firestore
-        async function saveResultsToFirestore() {
-            if (!isAuthReady || !userId) {
-                console.error("Firebase not ready or user not authenticated. Cannot save results.");
-                return;
-            }
-
-            const avgRt = reactionTimes.length > 0 ? reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length : 0;
-
-            const resultData = {
-                totalTrials: totalTrials,
-                correctHits: correctHits,
-                omissionErrors: omissionErrors,
-                commissionErrors: commissionErrors,
-                avgReactionTime: avgRt,
-                settings: settings, // Save current settings with the result
-                timestamp: serverTimestamp() // Add server timestamp
-            };
-
-            try {
-                // Update global best score in public collection
-                const globalBestDocRef = doc(db, `artifacts/${appId}/public/data/global_cpt_best_score`, 'best_score');
-                // Fetch current global best to compare
-                const globalBestSnapshot = await getDocs(collection(db, `artifacts/${appId}/public/data/global_cpt_best_score`));
-                const currentGlobalBestData = globalBestSnapshot.empty ? null : globalBestSnapshot.docs[0].data();
-
-                // Check if the current result is better than the global best
-                if (isResultBetter(resultData, currentGlobalBestData)) {
-                    await setDoc(globalBestDocRef, { ...resultData, userId: userId }); // Add userId to global best
-                    console.log("Global best score updated!");
-                }
-
-            } catch (error) {
-                console.error("Error saving results to Firestore:", error);
-                displayFeedback('حدث خطأ أثناء حفظ النتائج.', 'error'); // User-friendly error message
-            }
-        }
-
-        // Function to listen for global best from Firestore
-        function listenForResults() {
-            // Unsubscribe from previous listener to prevent memory leaks or duplicate calls
-            if (unsubscribeGlobalBest) {
-                unsubscribeGlobalBest();
-            }
-
-            if (!isAuthReady || !userId) {
-                console.warn("Firebase not ready or user not authenticated. Cannot listen for results.");
-                updateGlobalBestResultsDisplay(null);
-                return;
-            }
-
-            // Global Best Listener: Real-time updates for the overall best score
-            const globalBestDocRef = doc(db, `artifacts/${appId}/public/data/global_cpt_best_score`, 'best_score');
-            unsubscribeGlobalBest = onSnapshot(globalBestDocRef, (docSnapshot) => {
-                if (!isAuthReady) return; // Ensure auth is ready before processing
-
-                if (docSnapshot.exists()) {
-                    updateGlobalBestResultsDisplay(docSnapshot.data());
-                    console.log("Global best result updated:", docSnapshot.data());
-                } else {
-                    updateGlobalBestResultsDisplay(null);
-                    console.log("No global best result found.");
-                }
-            }, (error) => {
-                console.error("Error listening for global best result:", error);
-                displayFeedback('حدث خطأ في جلب أفضل نتيجة عالمية.', 'error'); // User-friendly error
-                updateGlobalBestResultsDisplay(null);
-            });
-        }
-
-        // Function to start the CPT test
-        function startTest() {
-            // Performance Optimization: Early exit if not ready
-            if (!isAuthReady) {
-                displayFeedback('الرجاء الانتظار، يتم تهيئة التطبيق....', 'info');
-                return;
-            }
-
-            isRunning = true; // Set test running flag to true
-            startButton.style.display = 'none'; // Hide start button
-            stopButton.style.display = 'inline-block'; // Show stop button
-
-            // Performance Optimization: Resetting state efficiently
-            totalTrials = 0;
-            correctHits = 0;
-            omissionErrors = 0;
-            commissionErrors = 0;
-            reactionTimes = [];
-            feedbackDisplay.textContent = ''; // Clear feedback
-            feedbackDisplay.classList.remove('show', 'success', 'error', 'info'); // Reset feedback classes
-            stimulusDisplay.textContent = 'استعد...'; // Prepare for test start
-
-            testStartTime = performance.now(); // Record test start time
-
-            // Performance Optimization: Attach/detach event listener only when needed
-            document.addEventListener('keydown', handleKeyPress);
-
-            // Schedule the first stimulus after a short delay
-            setTimeout(() => {
-                showStimulus();
-                // Schedule the overall test duration timer
-                testTimerId = setTimeout(stopTest, settings.testDuration);
-            }, 2000); // 2-second delay before first stimulus
-        }
-
-        // Function to stop the CPT test
-        function stopTest() {
-            if (!isRunning) return; // Only stop if test is running
-
-            isRunning = false; // Set test running flag to false
-            clearTimeout(timeoutId); // Clear any pending stimulus timeouts
-            clearTimeout(testTimerId); // Clear the overall test timer
-            document.removeEventListener('keydown', handleKeyPress); // Remove key press listener
-
-            stimulusDisplay.textContent = 'انتهى الاختبار!'; // Display end message
-            stimulusDisplay.classList.remove('stimulus-enter-active', 'stimulus-exit-active'); // Clear stimulus animations
-            displayFeedback('تم حفظ النتائج.', 'info');
-
-            startButton.style.display = 'inline-block'; // Show start button again
-            startButton.textContent = 'ابدأ اختبار جديد'; // Change text for new test
-            stopButton.style.display = 'none'; // Hide stop button
-
-            // Save results to Firestore (only global best logic remains)
-            saveResultsToFirestore();
-        }
-
-        // Event listeners for control buttons
-        startButton.addEventListener('click', startTest);
-        stopButton.addEventListener('click', stopTest);
-
-        // Dark Mode Toggle Logic
-        darkModeToggle.addEventListener('click', () => {
-            document.body.classList.toggle('dark');
-            // Toggle icon visibility
-            sunIcon.style.display = document.body.classList.contains('dark') ? 'none' : 'inline-block';
-            moonIcon.style.display = document.body.classList.contains('dark') ? 'inline-block' : 'none';
-            // Save preference to local storage
-            if (document.body.classList.contains('dark')) {
-                localStorage.setItem('theme', 'dark');
-            } else {
-                localStorage.setItem('theme', 'light');
-            }
-        });
-
-        // Check for saved theme preference on load
-        function loadThemePreference() {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') {
-                document.body.classList.add('dark');
-                sunIcon.style.display = 'none';
-                moonIcon.style.display = 'inline-block';
-            } else {
-                document.body.classList.remove('dark');
-                sunIcon.style.display = 'inline-block';
-                moonIcon.style.display = 'none';
-            }
-        }
-
-        // PWA: Register service worker
-        function registerServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/service-worker.js')
-                        .then(registration => {
-                            console.log('Service Worker registered with scope:', registration.scope);
-                        })
-                        .catch(error => {
-                            console.error('Service Worker registration failed:', error);
-                        });
-                });
-            }
-        }
-
-        // Initialize Firebase and authenticate user
-        async function initFirebaseAndAuth() {
-            try {
-                // Check if firebaseConfig is properly set
-                if (!firebaseConfig || !firebaseConfig.apiKey) {
-                    console.error("Firebase config is missing or incomplete. Please provide your actual firebaseConfig.");
-                    userIdDisplay.textContent = `معرف المستخدم: خطأ في التهيئة (إعدادات Firebase غير موجودة)`;
-                    displayFeedback('حدث خطأ: إعدادات Firebase غير موجودة. يرجى لصقها في الكود.', 'error');
-                    return;
-                }
-
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                // Listen for authentication state changes
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        userIdDisplay.textContent = `معرف المستخدم: ${userId}`;
-                        isAuthReady = true;
-                        listenForResults(); // Start listening for global best results once authenticated
-                    } else {
-                        // Sign in anonymously if no user is found
-                        console.log("Signing in anonymously...");
-                        await signInAnonymously(auth);
-                    }
-                });
-            } catch (error) {
-                console.error("Error initializing Firebase or authenticating:", error);
-                userIdDisplay.textContent = `معرف المستخدم: خطأ في التحميل (تأكد من إعدادات Firebase)`;
-                displayFeedback('حدث خطأ في تحميل التطبيق. يرجى التأكد من إعدادات Firebase في الكود.', 'error');
-            }
-        }
-
-        // Call initialization function when the window loads
-        window.onload = () => {
-            loadThemePreference(); // Load theme first
-            registerServiceWorker(); // Register PWA Service Worker
-            initFirebaseAndAuth(); // Then initialize Firebase
-        };
-    </script>
-</body>
-</html>
+export default App;
 
