@@ -4,87 +4,96 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>أداة تدريب الانتباه المستمر (CPT)</title>
+    <!-- Tailwind CSS CDN for utility classes -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Base styling for the body */
+        /* Base styling for the body to center content and set basic typography */
         body {
-            font-family: 'Inter', sans-serif; /* Using Inter font */
-            background-color: #f0f4f8; /* Light gray background */
-            color: #333; /* Dark gray text */
+            font-family: 'Inter', sans-serif; /* Using Inter font for modern look */
+            background-color: #f0f4f8; /* Light gray background for a clean feel */
+            color: #333; /* Dark gray text for readability */
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh; /* Full viewport height */
-            padding: 1rem; /* Padding around the content */
+            min-height: 100vh; /* Ensure full viewport height */
+            padding: 1rem; /* Padding around the main container */
             box-sizing: border-box; /* Include padding in element's total width and height */
+            direction: rtl; /* Ensure RTL direction for the whole page */
         }
-        /* Main container for the application */
+        /* Main container for the application UI */
         .container {
-            background-color: #ffffff; /* White background */
-            border-radius: 1.5rem; /* More rounded corners */
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); /* Soft shadow */
-            padding: 2rem; /* Inner padding */
+            background-color: #ffffff; /* White background for the main card */
+            border-radius: 1.5rem; /* More rounded corners for a softer look */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); /* Soft shadow for depth */
+            padding: 2rem; /* Inner padding within the container */
             width: 100%; /* Full width on small screens */
-            max-width: 600px; /* Max width for better readability on large screens */
+            max-width: 600px; /* Max width to maintain readability on larger screens */
             display: flex;
             flex-direction: column; /* Stack elements vertically */
-            align-items: center; /* Center align items */
-            text-align: center; /* Center align text */
+            align-items: center; /* Center align items horizontally */
+            text-align: center; /* Center align text inside the container */
         }
-        /* Area where the stimulus (letter) is displayed */
+        /* Styling for the area where the stimulus (letter) is displayed */
         .display-area {
-            background-color: #e2e8f0; /* Light blue-gray background */
-            border-radius: 1rem; /* Rounded corners */
+            background-color: #e2e8f0; /* Default light blue-gray background */
+            border-radius: 1rem; /* Rounded corners for the display area */
             width: 100%;
             height: 200px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 8rem; /* Large font for visibility */
+            font-size: 8rem; /* Large font for high visibility */
             font-weight: bold;
-            color: #2c5282; /* Dark blue text */
+            color: #2c5282; /* Dark blue text for contrast */
             margin-bottom: 2rem;
-            user-select: none; /* Prevent text selection */
+            user-select: none; /* Prevent text selection within this area */
             -webkit-user-select: none; /* For Safari */
             -moz-user-select: none; /* For Firefox */
             -ms-user-select: none; /* For IE/Edge */
+            transition: background-color 0.3s ease-in-out; /* Smooth transition for background color changes */
         }
-        /* General button styling using Tailwind's @apply */
+        /* General button styling using Tailwind's @apply directives */
         .button {
+            /* Common styles for all buttons */
             @apply px-6 py-3 rounded-full font-semibold transition-all duration-300 ease-in-out transform hover:scale-105;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Button shadow */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Subtle shadow for buttons */
         }
-        /* Primary button color */
+        /* Specific styling for primary action buttons */
         .button-primary {
             @apply bg-blue-600 text-white hover:bg-blue-700;
+            background-image: linear-gradient(to right, #4299e1, #2b6cb0); /* Gradient for a modern look */
         }
-        /* Secondary button color */
+        /* Specific styling for secondary action buttons */
         .button-secondary {
             @apply bg-gray-300 text-gray-800 hover:bg-gray-400;
         }
-        /* Danger button color */
+        /* Specific styling for danger/stop action buttons */
         .button-danger {
             @apply bg-red-600 text-white hover:bg-red-700;
+            background-image: linear-gradient(to right, #ef4444, #dc2626); /* Gradient for red buttons */
         }
         /* Styling for feedback messages (correct/error/info) */
         .feedback-message {
             font-size: 1.5rem;
             font-weight: bold;
             margin-top: 1rem;
-            min-height: 2rem; /* To prevent layout shifts when message appears/disappears */
+            min-height: 2rem; /* Ensure consistent height to prevent layout shifts */
         }
+        /* Green color for success messages */
         .success {
-            color: #28a745; /* Green color for success */
+            color: #28a745;
         }
+        /* Red color for error messages */
         .error {
-            color: #dc3545; /* Red color for error */
+            color: #dc3545;
         }
+        /* Blue color for informational messages */
         .info {
-            color: #007bff; /* Blue color for info */
+            color: #007bff;
         }
         /* Styling for settings and results panels */
         .settings-panel {
-            background-color: #f7fafc; /* Lighter gray background */
+            background-color: #f7fafc; /* Lighter gray background for panels */
             border-radius: 1rem; /* Rounded corners */
             padding: 1.5rem;
             margin-top: 1.5rem;
@@ -96,12 +105,12 @@
             margin-bottom: 0.5rem;
             font-weight: bold;
             color: #4a5568; /* Darker gray text */
-            text-align: right; /* Align labels to the right for RTL */
+            text-align: right; /* Align labels to the right for RTL layout */
         }
         /* Styling for range input sliders */
         .settings-panel input[type="range"] {
             width: 100%;
-            -webkit-appearance: none; /* Remove default styling */
+            -webkit-appearance: none; /* Remove default styling for cross-browser consistency */
             height: 8px;
             border-radius: 5px;
             background: #cbd5e0; /* Light gray track */
@@ -109,6 +118,7 @@
             opacity: 0.7;
             transition: opacity .2s;
         }
+        /* Styling for the thumb of the range slider (Webkit/Blink) */
         .settings-panel input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
@@ -117,32 +127,38 @@
             border-radius: 50%; /* Circular thumb */
             background: #4299e1; /* Blue thumb */
             cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Thumb shadow */
         }
+        /* Styling for the thumb of the range slider (Firefox) */
         .settings-panel input[type="range"]::-moz-range-thumb {
             width: 20px;
             height: 20px;
             border-radius: 50%;
             background: #4299e1;
             cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
         /* Styling for displaying current slider values */
         .value-display {
             font-weight: bold;
             color: #2c5282; /* Dark blue text */
-            margin-right: 0.5rem; /* Space between value and label */
+            margin-right: 0.5rem; /* Space between value and label in RTL */
         }
         /* Responsive adjustments for smaller screens (mobile) */
         @media (max-width: 640px) {
             .display-area {
-                font-size: 6rem; /* Smaller font size */
-                height: 150px; /* Shorter height */
+                font-size: 6rem; /* Smaller font size on mobile */
+                height: 150px; /* Shorter height on mobile */
             }
             .button {
-                padding: 0.75rem 1.25rem; /* Smaller padding */
-                font-size: 0.9rem; /* Smaller font size */
+                padding: 0.75rem 1.25rem; /* Smaller padding for buttons */
+                font-size: 0.9rem; /* Smaller font size for button text */
             }
             .container {
-                padding: 1rem; /* Smaller padding */
+                padding: 1rem; /* Smaller container padding on mobile */
+            }
+            .settings-panel label {
+                text-align: center; /* Center align labels on small screens */
             }
         }
     </style>
@@ -151,7 +167,7 @@
     <div class="container">
         <h1 class="text-3xl font-bold mb-4 text-blue-800">أداة تدريب الانتباه المستمر (CPT)</h1>
         <p class="text-gray-600 mb-6">
-            اضغط على "المسافة" (Spacebar) فقط عندما يظهر الحرف <span class="font-bold text-blue-700">'X'</span>. تجاهل جميع الحروف الأخرى.
+            اضغط على "المسافة" (Spacebar) أو اضغط على الشاشة فقط عندما يظهر الحرف <span class="font-bold text-blue-700">'X'</span>. تجاهل جميع الحروف الأخرى.
             <br>
             هدف هذه الأداة هو تدريب قدرتك على الانتباه المستمر والتركيز.
         </p>
@@ -189,14 +205,19 @@
 
         <div id="settingsPanel" class="settings-panel mt-6 w-full">
             <h2 class="text-2xl font-bold mb-4 text-blue-700">إعدادات التحدي</h2>
+            <p class="text-lg font-semibold text-gray-700 mb-4">
+                مستوى الصعوبة الحالي: <span id="difficultyLevel" class="value-display text-blue-600">عادي</span>
+            </p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label for="stimulusDuration">مدة عرض الحرف (مللي ثانية): <span id="stimulusDurationValue" class="value-display">500</span></label>
-                    <input type="range" id="stimulusDuration" min="100" max="1000" value="500" step="50" class="w-full">
+                    <!-- Min value changed to 50ms for more challenge -->
+                    <input type="range" id="stimulusDuration" min="50" max="1000" value="500" step="10" class="w-full">
                 </div>
                 <div>
                     <label for="interStimulusInterval">الفاصل بين الحروف (مللي ثانية): <span id="interStimulusIntervalValue" class="value-display">1500</span></label>
-                    <input type="range" id="interStimulusInterval" min="500" max="3000" value="1500" step="100" class="w-full">
+                    <!-- Min value changed to 50ms for more challenge -->
+                    <input type="range" id="interStimulusInterval" min="50" max="3000" value="1500" step="50" class="w-full">
                 </div>
                 <div>
                     <label for="targetFrequency">تكرار ظهور 'X' (%): <span id="targetFrequencyValue" class="value-display">20</span></label>
@@ -206,6 +227,10 @@
                     <label for="testDuration">مدة الاختبار (ثانية): <span id="testDurationValue" class="value-display">120</span></label>
                     <input type="range" id="testDuration" min="30" max="300" value="120" step="10" class="w-full">
                 </div>
+                <div class="md:col-span-2 flex items-center justify-center mt-4">
+                    <input type="checkbox" id="distractionMode" class="ml-2 h-5 w-5 text-blue-600 rounded focus:ring-blue-500" />
+                    <label for="distractionMode" class="mb-0 cursor-pointer">تفعيل وضع التشتيت البصري</label>
+                </div>
             </div>
         </div>
     </div>
@@ -213,18 +238,21 @@
     <script>
         // Get DOM elements for display and controls
         const stimulusDisplay = document.getElementById('stimulus');
+        const displayArea = document.getElementById('displayArea'); // Get the parent div for background changes
         const feedbackDisplay = document.getElementById('feedback');
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
         const resetButton = document.getElementById('resetButton');
         const resultsPanel = document.getElementById('resultsPanel');
         const settingsPanel = document.getElementById('settingsPanel');
+        const difficultyLevelDisplay = document.getElementById('difficultyLevel'); // Element to show difficulty
 
         // Get DOM elements for settings input controls
         const stimulusDurationInput = document.getElementById('stimulusDuration');
         const interStimulusIntervalInput = document.getElementById('interStimulusInterval');
         const targetFrequencyInput = document.getElementById('targetFrequency');
         const testDurationInput = document.getElementById('testDuration');
+        const distractionModeToggle = document.getElementById('distractionMode'); // New distraction mode toggle
 
         // Get DOM elements for displaying current setting values
         const stimulusDurationValue = document.getElementById('stimulusDurationValue');
@@ -254,26 +282,71 @@
             stimulusDuration: parseInt(stimulusDurationInput.value), // Duration a stimulus is visible (ms)
             interStimulusInterval: parseInt(interStimulusIntervalInput.value), // Time between stimuli (ms)
             targetFrequency: parseInt(targetFrequencyInput.value) / 100, // Probability of 'X' appearing (as decimal)
-            testDuration: parseInt(testDurationInput.value) * 1000 // Total test duration (ms)
+            testDuration: parseInt(testDurationInput.value) * 1000, // Total test duration (ms)
+            distractionMode: distractionModeToggle.checked // State of the new distraction mode
         };
+
+        // Function to update the displayed difficulty level based on current settings
+        function updateDifficultyLevel() {
+            const duration = settings.stimulusDuration;
+            const interval = settings.interStimulusInterval;
+            const frequency = settings.targetFrequency;
+            const distraction = settings.distractionMode;
+
+            // Simple scoring: lower duration/interval, higher frequency, and distraction increase difficulty
+            let score = 0;
+            if (duration < 100) score += 3;
+            else if (duration < 200) score += 2;
+            else if (duration < 500) score += 1;
+
+            if (interval < 100) score += 3;
+            else if (interval < 300) score += 2;
+            else if (interval < 800) score += 1;
+
+            if (frequency > 0.35) score += 2; // High frequency might be challenging
+            else if (frequency < 0.15) score += 1; // Very low frequency also challenging (vigilance)
+
+            if (distraction) score += 2; // Distraction adds significant challenge
+
+            let levelText = '';
+            if (score >= 7) {
+                levelText = 'صعب جداً';
+            } else if (score >= 4) {
+                levelText = 'صعب';
+            } else if (score >= 2) {
+                levelText = 'متوسط';
+            } else {
+                levelText = 'عادي';
+            }
+            difficultyLevelDisplay.textContent = levelText;
+        }
 
         // Update settings and their display values when slider inputs change
         stimulusDurationInput.oninput = () => {
             settings.stimulusDuration = parseInt(stimulusDurationInput.value);
             stimulusDurationValue.textContent = settings.stimulusDuration;
+            updateDifficultyLevel(); // Update difficulty on setting change
         };
         interStimulusIntervalInput.oninput = () => {
             settings.interStimulusInterval = parseInt(interStimulusIntervalInput.value);
             interStimulusIntervalValue.textContent = settings.interStimulusInterval;
+            updateDifficultyLevel(); // Update difficulty on setting change
         };
         targetFrequencyInput.oninput = () => {
             settings.targetFrequency = parseInt(targetFrequencyInput.value) / 100;
             targetFrequencyValue.textContent = parseInt(targetFrequencyInput.value);
+            updateDifficultyLevel(); // Update difficulty on setting change
         };
         testDurationInput.oninput = () => {
             settings.testDuration = parseInt(testDurationInput.value) * 1000;
             testDurationValue.textContent = parseInt(testDurationInput.value);
+            // Difficulty doesn't directly depend on test duration
         };
+        distractionModeToggle.onchange = () => {
+            settings.distractionMode = distractionModeToggle.checked;
+            updateDifficultyLevel(); // Update difficulty on setting change
+        };
+
 
         // Function to generate a random letter for the stimulus
         function getRandomLetter() {
@@ -304,6 +377,15 @@
             stimulusDisplay.classList.remove('text-green-600', 'text-red-600'); // Clear any previous feedback color
             feedbackDisplay.textContent = ''; // Clear previous feedback message
 
+            // Apply distraction mode background change if enabled
+            if (settings.distractionMode) {
+                const distractionColors = ['#e2e8f0', '#d3dbed', '#ccd6e0']; // Subtle background colors
+                const randomColor = distractionColors[Math.floor(Math.random() * distractionColors.length)];
+                displayArea.style.backgroundColor = randomColor;
+            } else {
+                displayArea.style.backgroundColor = '#e2e8f0'; // Reset to default if distraction mode is off
+            }
+
             stimulusShownTime = performance.now(); // Record the exact time the stimulus appeared
 
             // Schedule the stimulus to be hidden after its duration
@@ -324,6 +406,7 @@
 
             stimulusDisplay.textContent = ''; // Clear the display area
             currentStimulus = ''; // Reset current stimulus variable
+            displayArea.style.backgroundColor = '#e2e8f0'; // Reset background color after stimulus is hidden
 
             // Schedule the next stimulus to appear after the inter-stimulus interval
             timeoutId = setTimeout(showStimulus, settings.interStimulusInterval);
@@ -440,6 +523,8 @@
             commissionErrors = 0;
             reactionTimes = [];
             remainingTestTime = 0;
+
+            updateDifficultyLevel(); // Update difficulty on reset
         }
 
         // Event Listeners for buttons and keyboard input
@@ -452,7 +537,7 @@
         stimulusDurationValue.textContent = stimulusDurationInput.value;
         interStimulusIntervalValue.textContent = interStimulusIntervalInput.value;
         targetFrequencyValue.textContent = targetFrequencyInput.value;
-        testDurationValue.textContent = testDurationInput.value;
+        testDurationValue.textContent = parseInt(testDurationInput.value); // Ensure it's a number
 
         // Handle touch events for mobile devices to simulate spacebar press
         // Tapping the display area will act as a response
@@ -460,6 +545,9 @@
             event.preventDefault(); // Prevent default touch behavior (like scrolling)
             handleKeyPress({ code: 'Space' }); // Simulate a spacebar key press
         });
+
+        // Initialize difficulty level on page load
+        updateDifficultyLevel();
     </script>
 </body>
 </html>
