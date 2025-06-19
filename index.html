@@ -125,7 +125,7 @@
             width: 20px;
             height: 20px;
             border-radius: 50%; /* Circular thumb */
-            background: #4299e1; /* Blue thumb */
+            background: #4299e1;
             cursor: pointer;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Thumb shadow */
         }
@@ -144,21 +144,20 @@
             color: #2c5282; /* Dark blue text */
             margin-right: 0.5rem; /* Space between value and label in RTL */
         }
-        /* Responsive adjustments for smaller screens (mobile) */
         @media (max-width: 640px) {
             .display-area {
-                font-size: 6rem; /* Smaller font size on mobile */
-                height: 150px; /* Shorter height on mobile */
+                font-size: 6rem;
+                height: 150px;
             }
             .button {
-                padding: 0.75rem 1.25rem; /* Smaller padding for buttons */
-                font-size: 0.9rem; /* Smaller font size for button text */
+                padding: 0.75rem 1.25rem;
+                font-size: 0.9rem;
             }
             .container {
-                padding: 1rem; /* Smaller container padding on mobile */
+                padding: 1rem;
             }
             .settings-panel label {
-                text-align: center; /* Center align labels on small screens */
+                text-align: center;
             }
         }
     </style>
@@ -166,7 +165,7 @@
 <body>
     <div class="container">
         <h1 class="text-3xl font-bold mb-4 text-blue-800">أداة تدريب الانتباه المستمر (CPT)</h1>
-        <p class="text-gray-600 mb-6">
+        <p class="text-gray-600 mb-6" id="instructionText">
             اضغط على "المسافة" (Spacebar) أو اضغط على الشاشة فقط عندما يظهر الحرف <span class="font-bold text-blue-700">'X'</span>. تجاهل جميع الحروف الأخرى.
             <br>
             هدف هذه الأداة هو تدريب قدرتك على الانتباه المستمر والتركيز.
@@ -190,16 +189,16 @@
                 <span class="font-semibold">إجمالي المحاولات:</span> <span id="totalTrials" class="value-display">0</span>
             </p>
             <p class="text-gray-700 text-lg mb-2">
-                <span class="font-semibold">الاستجابات الصحيحة (X):</span> <span id="correctHits" class="value-display">0</span>
+                <span class="font-semibold">الاستجابات الصحيحة (للحرف المستهدف):</span> <span id="correctHits" class="value-display">0</span>
             </p>
             <p class="text-gray-700 text-lg mb-2">
-                <span class="font-semibold">أخطاء الإغفال (لم تستجب لـ X):</span> <span id="omissionErrors" class="value-display">0</span>
+                <span class="font-semibold">أخطاء الإغفال (لم تستجب للهدف):</span> <span id="omissionErrors" class="value-display">0</span>
             </p>
             <p class="text-gray-700 text-lg mb-2">
-                <span class="font-semibold">أخطاء الارتكاب (استجبت لغير X):</span> <span id="commissionErrors" class="value-display">0</span>
+                <span class="font-semibold">أخطاء الارتكاب (استجبت لغير الهدف):</span> <span id="commissionErrors" class="value-display">0</span>
             </p>
             <p class="text-gray-700 text-lg mb-2">
-                <span class="font-semibold">متوسط وقت الاستجابة (لـ X):</span> <span id="avgReactionTime" class="value-display">0 مللي ثانية</span>
+                <span class="font-semibold">متوسط وقت الاستجابة (للهدف):</span> <span id="avgReactionTime" class="value-display">0 مللي ثانية</span>
             </p>
         </div>
 
@@ -211,16 +210,14 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label for="stimulusDuration">مدة عرض الحرف (مللي ثانية): <span id="stimulusDurationValue" class="value-display">500</span></label>
-                    <!-- Min value changed to 50ms for more challenge -->
                     <input type="range" id="stimulusDuration" min="50" max="1000" value="500" step="10" class="w-full">
                 </div>
                 <div>
                     <label for="interStimulusInterval">الفاصل بين الحروف (مللي ثانية): <span id="interStimulusIntervalValue" class="value-display">1500</span></label>
-                    <!-- Min value changed to 50ms for more challenge -->
                     <input type="range" id="interStimulusInterval" min="50" max="3000" value="1500" step="50" class="w-full">
                 </div>
                 <div>
-                    <label for="targetFrequency">تكرار ظهور 'X' (%): <span id="targetFrequencyValue" class="value-display">20</span></label>
+                    <label for="targetFrequency">تكرار ظهور الحرف المستهدف (%): <span id="targetFrequencyValue" class="value-display">20</span></label>
                     <input type="range" id="targetFrequency" min="5" max="50" value="20" step="5" class="w-full">
                 </div>
                 <div>
@@ -231,6 +228,13 @@
                     <input type="checkbox" id="distractionMode" class="ml-2 h-5 w-5 text-blue-600 rounded focus:ring-blue-500" />
                     <label for="distractionMode" class="mb-0 cursor-pointer">تفعيل وضع التشتيت البصري</label>
                 </div>
+                <div class="md:col-span-2 flex items-center justify-center mt-4">
+                    <input type="checkbox" id="dynamicTargetLetter" class="ml-2 h-5 w-5 text-blue-600 rounded focus:ring-blue-500" />
+                    <label for="dynamicTargetLetter" class="mb-0 cursor-pointer">تغيير الحرف المستهدف لكل اختبار</label>
+                </div>
+                <div class="md:col-span-2 flex items-center justify-center mt-4">
+                    <button id="applyAutoProgression" class="button button-secondary">تطبيق التقدم التلقائي</button>
+                </div>
             </div>
         </div>
     </div>
@@ -238,21 +242,24 @@
     <script>
         // Get DOM elements for display and controls
         const stimulusDisplay = document.getElementById('stimulus');
-        const displayArea = document.getElementById('displayArea'); // Get the parent div for background changes
+        const displayArea = document.getElementById('displayArea');
         const feedbackDisplay = document.getElementById('feedback');
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
         const resetButton = document.getElementById('resetButton');
         const resultsPanel = document.getElementById('resultsPanel');
         const settingsPanel = document.getElementById('settingsPanel');
-        const difficultyLevelDisplay = document.getElementById('difficultyLevel'); // Element to show difficulty
+        const difficultyLevelDisplay = document.getElementById('difficultyLevel');
+        const applyAutoProgressionButton = document.getElementById('applyAutoProgression');
+        const instructionText = document.getElementById('instructionText'); // Added for dynamic instructions
 
         // Get DOM elements for settings input controls
         const stimulusDurationInput = document.getElementById('stimulusDuration');
         const interStimulusIntervalInput = document.getElementById('interStimulusInterval');
         const targetFrequencyInput = document.getElementById('targetFrequency');
         const testDurationInput = document.getElementById('testDuration');
-        const distractionModeToggle = document.getElementById('distractionMode'); // New distraction mode toggle
+        const distractionModeToggle = document.getElementById('distractionMode');
+        const dynamicTargetLetterToggle = document.getElementById('dynamicTargetLetter'); // New dynamic target letter toggle
 
         // Get DOM elements for displaying current setting values
         const stimulusDurationValue = document.getElementById('stimulusDurationValue');
@@ -261,30 +268,40 @@
         const testDurationValue = document.getElementById('testDurationValue');
 
         // Game state variables
-        let isRunning = false; // Flag to check if the test is currently running
-        let timeoutId; // Stores the ID of the setTimeout for stimulus display
-        let currentStimulus = ''; // Stores the currently displayed letter
-        let stimulusShownTime = 0; // Timestamp when the current stimulus was shown
-        let hasResponded = false; // Flag to check if user has responded to the current stimulus
-        let targetLetter = 'X'; // The specific letter the user should respond to
+        let isRunning = false;
+        let timeoutId;
+        let currentStimulus = '';
+        let stimulusShownTime = 0;
+        let hasResponded = false;
+        let targetLetter = 'X'; // Default target letter, can be changed
+        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; // All possible letters
 
         // Performance metrics
-        let totalTrials = 0; // Total number of stimuli shown
-        let correctHits = 0; // Number of correct responses to target letter 'X'
-        let omissionErrors = 0; // Number of times 'X' was shown but no response was made
-        let commissionErrors = 0; // Number of times a non-target letter was shown but a response was made
-        let reactionTimes = []; // Array to store reaction times for correct hits
-        let testTimerId; // Stores the ID of the setTimeout for the overall test duration
-        let remainingTestTime = 0; // Remaining time for the test
+        let totalTrials = 0;
+        let correctHits = 0;
+        let omissionErrors = 0;
+        let commissionErrors = 0;
+        let reactionTimes = [];
+        let testTimerId;
+        let remainingTestTime = 0;
 
         // Game settings (initialized with default values from input elements)
         let settings = {
-            stimulusDuration: parseInt(stimulusDurationInput.value), // Duration a stimulus is visible (ms)
-            interStimulusInterval: parseInt(interStimulusIntervalInput.value), // Time between stimuli (ms)
-            targetFrequency: parseInt(targetFrequencyInput.value) / 100, // Probability of 'X' appearing (as decimal)
-            testDuration: parseInt(testDurationInput.value) * 1000, // Total test duration (ms)
-            distractionMode: distractionModeToggle.checked // State of the new distraction mode
+            stimulusDuration: parseInt(stimulusDurationInput.value),
+            interStimulusInterval: parseInt(interStimulusIntervalInput.value),
+            targetFrequency: parseInt(targetFrequencyInput.value) / 100,
+            testDuration: parseInt(testDurationInput.value) * 1000,
+            distractionMode: distractionModeToggle.checked,
+            dynamicTargetLetter: dynamicTargetLetterToggle.checked // Initialize new setting
         };
+
+        // --- Auto Progression Logic ---
+        let autoProgressionEnabled = false;
+        const PROGRESSION_THRESHOLD_ACCURACY_OMISSION = 0.99; // 99% accuracy for omission errors
+        const PROGRESSION_THRESHOLD_ACCURACY_COMMISSION = 0.99; // 99% accuracy for commission errors
+        const MIN_RT_FOR_PROGRESSION = 100; // Average RT must be below this to progress
+        const DIFFICULTY_STEP_MS = 10; // How much to decrease SD/ISI by
+        const MIN_SD_ISI = 50; // Absolute minimum for duration and interval
 
         // Function to update the displayed difficulty level based on current settings
         function updateDifficultyLevel() {
@@ -292,8 +309,8 @@
             const interval = settings.interStimulusInterval;
             const frequency = settings.targetFrequency;
             const distraction = settings.distractionMode;
+            const dynamicTarget = settings.dynamicTargetLetter;
 
-            // Simple scoring: lower duration/interval, higher frequency, and distraction increase difficulty
             let score = 0;
             if (duration < 100) score += 3;
             else if (duration < 200) score += 2;
@@ -303,13 +320,16 @@
             else if (interval < 300) score += 2;
             else if (interval < 800) score += 1;
 
-            if (frequency > 0.35) score += 2; // High frequency might be challenging
-            else if (frequency < 0.15) score += 1; // Very low frequency also challenging (vigilance)
+            if (frequency > 0.35) score += 2;
+            else if (frequency < 0.15) score += 1; // Very low frequency also increases vigilance challenge
 
-            if (distraction) score += 2; // Distraction adds significant challenge
+            if (distraction) score += 2;
+            if (dynamicTarget) score += 2; // Dynamic target adds cognitive load
 
             let levelText = '';
-            if (score >= 7) {
+            if (score >= 9) {
+                levelText = 'فائق الصعوبة';
+            } else if (score >= 7) {
                 levelText = 'صعب جداً';
             } else if (score >= 4) {
                 levelText = 'صعب';
@@ -325,126 +345,126 @@
         stimulusDurationInput.oninput = () => {
             settings.stimulusDuration = parseInt(stimulusDurationInput.value);
             stimulusDurationValue.textContent = settings.stimulusDuration;
-            updateDifficultyLevel(); // Update difficulty on setting change
+            updateDifficultyLevel();
         };
         interStimulusIntervalInput.oninput = () => {
             settings.interStimulusInterval = parseInt(interStimulusIntervalInput.value);
             interStimulusIntervalValue.textContent = settings.interStimulusInterval;
-            updateDifficultyLevel(); // Update difficulty on setting change
+            updateDifficultyLevel();
         };
         targetFrequencyInput.oninput = () => {
             settings.targetFrequency = parseInt(targetFrequencyInput.value) / 100;
             targetFrequencyValue.textContent = parseInt(targetFrequencyInput.value);
-            updateDifficultyLevel(); // Update difficulty on setting change
+            updateDifficultyLevel();
         };
         testDurationInput.oninput = () => {
             settings.testDuration = parseInt(testDurationInput.value) * 1000;
             testDurationValue.textContent = parseInt(testDurationInput.value);
-            // Difficulty doesn't directly depend on test duration
         };
         distractionModeToggle.onchange = () => {
             settings.distractionMode = distractionModeToggle.checked;
-            updateDifficultyLevel(); // Update difficulty on setting change
+            updateDifficultyLevel();
+        };
+        dynamicTargetLetterToggle.onchange = () => {
+            settings.dynamicTargetLetter = dynamicTargetLetterToggle.checked;
+            updateInstructions(); // Update instructions when this setting changes
+            updateDifficultyLevel();
         };
 
+        // Function to update the instruction text based on dynamic target letter setting
+        function updateInstructions() {
+            const currentTarget = settings.dynamicTargetLetter ? `الحرف المستهدف الحالي: <span class="font-bold text-blue-700">${targetLetter}</span>` : `الحرف <span class="font-bold text-blue-700">'X'</span>`;
+            instructionText.innerHTML = `اضغط على "المسافة" (Spacebar) أو اضغط على الشاشة فقط عندما يظهر ${currentTarget}. تجاهل جميع الحروف الأخرى.
+            <br>
+            هدف هذه الأداة هو تدريب قدرتك على الانتباه المستمر والتركيز.`;
+        }
 
         // Function to generate a random letter for the stimulus
         function getRandomLetter() {
-            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; // All possible letters
             let letter;
-            // Decide if the target letter 'X' should appear based on targetFrequency
+            // Decide if the target letter should appear based on targetFrequency
             if (Math.random() < settings.targetFrequency) {
                 letter = targetLetter; // Generate target letter
             } else {
                 // Generate a random letter that is NOT the target letter
                 do {
                     letter = alphabet[Math.floor(Math.random() * alphabet.length)];
-                } while (letter === targetLetter); // Ensure it's not 'X'
+                } while (letter === targetLetter); // Ensure it's not the current target
             }
             return letter;
         }
 
         // Function to display a stimulus on the screen
         function showStimulus() {
-            // If the test is not running, stop the sequence
             if (!isRunning) return;
 
-            totalTrials++; // Increment total trials count
-            hasResponded = false; // Reset response flag for the new stimulus
+            totalTrials++;
+            hasResponded = false;
 
-            currentStimulus = getRandomLetter(); // Get a new random letter
-            stimulusDisplay.textContent = currentStimulus; // Display the letter
-            stimulusDisplay.classList.remove('text-green-600', 'text-red-600'); // Clear any previous feedback color
-            feedbackDisplay.textContent = ''; // Clear previous feedback message
+            currentStimulus = getRandomLetter();
+            stimulusDisplay.textContent = currentStimulus;
+            stimulusDisplay.classList.remove('text-green-600', 'text-red-600');
+            feedbackDisplay.textContent = '';
 
-            // Apply distraction mode background change if enabled
             if (settings.distractionMode) {
-                const distractionColors = ['#e2e8f0', '#d3dbed', '#ccd6e0']; // Subtle background colors
+                // More subtle and varied colors for distraction mode
+                const distractionColors = ['#e2e8f0', '#d3dbed', '#ccd6e0', '#c2cfdf', '#b8c6d4', '#a8b8cc'];
                 const randomColor = distractionColors[Math.floor(Math.random() * distractionColors.length)];
                 displayArea.style.backgroundColor = randomColor;
             } else {
-                displayArea.style.backgroundColor = '#e2e8f0'; // Reset to default if distraction mode is off
+                displayArea.style.backgroundColor = '#e2e8f0';
             }
 
-            stimulusShownTime = performance.now(); // Record the exact time the stimulus appeared
-
-            // Schedule the stimulus to be hidden after its duration
+            stimulusShownTime = performance.now();
             timeoutId = setTimeout(hideStimulus, settings.stimulusDuration);
         }
 
         // Function to hide the stimulus and check for omission errors
         function hideStimulus() {
-            // If the test is not running, stop the sequence
             if (!isRunning) return;
 
-            // Check for omission error: if current stimulus was 'X' and no response was made
             if (currentStimulus === targetLetter && !hasResponded) {
-                omissionErrors++; // Increment omission error count
-                feedbackDisplay.textContent = 'خطأ: إغفال (لم تستجب لـ X)'; // Display error message
-                feedbackDisplay.className = 'feedback-message error'; // Apply error styling
+                omissionErrors++;
+                feedbackDisplay.textContent = 'خطأ: إغفال (لم تستجب للهدف)';
+                feedbackDisplay.className = 'feedback-message error';
             }
 
-            stimulusDisplay.textContent = ''; // Clear the display area
-            currentStimulus = ''; // Reset current stimulus variable
+            stimulusDisplay.textContent = '';
+            currentStimulus = '';
             displayArea.style.backgroundColor = '#e2e8f0'; // Reset background color after stimulus is hidden
 
-            // Schedule the next stimulus to appear after the inter-stimulus interval
             timeoutId = setTimeout(showStimulus, settings.interStimulusInterval);
         }
 
         // Event handler for keyboard key presses (specifically spacebar)
         function handleKeyPress(event) {
-            // If the test is not running, ignore key presses
             if (!isRunning) return;
 
-            // Check if spacebar was pressed and user hasn't responded to current stimulus yet
             if (event.code === 'Space' && !hasResponded) {
-                hasResponded = true; // Mark that user has responded to this stimulus
-                const reactionTime = performance.now() - stimulusShownTime; // Calculate reaction time
+                hasResponded = true;
+                const reactionTime = performance.now() - stimulusShownTime;
 
                 if (currentStimulus === targetLetter) {
-                    // Correct hit: user pressed spacebar for 'X'
-                    correctHits++; // Increment correct hits
-                    reactionTimes.push(reactionTime); // Store reaction time
-                    feedbackDisplay.textContent = `صحيح! وقت الاستجابة: ${Math.round(reactionTime)} مللي ثانية`; // Display success message
-                    feedbackDisplay.className = 'feedback-message success'; // Apply success styling
+                    correctHits++;
+                    reactionTimes.push(reactionTime);
+                    feedbackDisplay.textContent = `صحيح! وقت الاستجابة: ${Math.round(reactionTime)} مللي ثانية`;
+                    feedbackDisplay.className = 'feedback-message success';
                 } else {
-                    // Commission error: user pressed spacebar for a non-target letter
-                    commissionErrors++; // Increment commission errors
-                    feedbackDisplay.textContent = 'خطأ: ارتكاب (استجبت لغير X)'; // Display error message
-                    feedbackDisplay.className = 'feedback-message error'; // Apply error styling
+                    commissionErrors++;
+                    feedbackDisplay.textContent = 'خطأ: ارتكاب (استجبت لغير الهدف)';
+                    feedbackDisplay.className = 'feedback-message error';
                 }
             }
         }
 
         // Function to start the CPT test
         function startTest() {
-            isRunning = true; // Set test running flag to true
-            startButton.style.display = 'none'; // Hide start button
-            stopButton.style.display = 'inline-block'; // Show stop button
-            resetButton.style.display = 'none'; // Hide reset button during test
-            resultsPanel.style.display = 'none'; // Hide results panel
-            settingsPanel.classList.add('opacity-50', 'pointer-events-none'); // Disable settings panel during test
+            isRunning = true;
+            startButton.style.display = 'none';
+            stopButton.style.display = 'inline-block';
+            resetButton.style.display = 'none';
+            resultsPanel.style.display = 'none';
+            settingsPanel.classList.add('opacity-50', 'pointer-events-none');
 
             // Reset all performance metrics for a new test session
             totalTrials = 0;
@@ -452,102 +472,204 @@
             omissionErrors = 0;
             commissionErrors = 0;
             reactionTimes = [];
-            feedbackDisplay.textContent = ''; // Clear feedback
-            stimulusDisplay.textContent = 'استعد...'; // Display "Get Ready" message
-            stimulusDisplay.className = 'display-area info'; // Apply info styling
+            feedbackDisplay.textContent = '';
+            stimulusDisplay.textContent = 'استعد...';
+            stimulusDisplay.className = 'display-area info';
 
-            // Start the overall test timer
+            // Set the target letter for this test session
+            if (settings.dynamicTargetLetter) {
+                // Choose a random letter from A-Z, excluding X (if we want to ensure X is not picked by chance often)
+                // Or simply choose any random letter and make it the target
+                do {
+                    targetLetter = alphabet[Math.floor(Math.random() * alphabet.length)];
+                } while (targetLetter === ' '); // Just in case, ensure it's a valid letter
+            } else {
+                targetLetter = 'X'; // Default to 'X' if dynamic is off
+            }
+            updateInstructions(); // Update instructions to show current target letter
+
             remainingTestTime = settings.testDuration;
-            testTimerId = setTimeout(endTest, remainingTestTime); // Schedule end of test
+            testTimerId = setTimeout(endTest, remainingTestTime);
 
-            // Give a short delay (e.g., 1 second) before showing the first stimulus
             setTimeout(() => {
-                stimulusDisplay.className = 'display-area'; // Reset display area styling
-                showStimulus(); // Start the stimulus sequence
-            }, 1000); // 1 second countdown
+                stimulusDisplay.className = 'display-area';
+                showStimulus();
+            }, 1000);
         }
 
         // Function to end the CPT test
         function endTest() {
-            isRunning = false; // Set test running flag to false
-            clearTimeout(timeoutId); // Stop any pending stimulus timeouts
-            clearTimeout(testTimerId); // Stop the overall test timer
+            isRunning = false;
+            clearTimeout(timeoutId);
+            clearTimeout(testTimerId);
 
-            stimulusDisplay.textContent = 'انتهى الاختبار!'; // Display "Test Ended" message
-            stimulusDisplay.className = 'display-area info'; // Apply info styling
-            feedbackDisplay.textContent = 'انتهى الاختبار. انظر النتائج أدناه.'; // Display final feedback
-            feedbackDisplay.className = 'feedback-message info'; // Apply info styling
+            stimulusDisplay.textContent = 'انتهى الاختبار!';
+            stimulusDisplay.className = 'display-area info';
+            feedbackDisplay.textContent = 'انتهى الاختبار. انظر النتائج أدناه.';
+            feedbackDisplay.className = 'feedback-message info';
 
-            stopButton.style.display = 'none'; // Hide stop button
-            startButton.style.display = 'inline-block'; // Show start button again
-            resetButton.style.display = 'inline-block'; // Show reset button
-            settingsPanel.classList.remove('opacity-50', 'pointer-events-none'); // Re-enable settings panel
+            stopButton.style.display = 'none';
+            startButton.style.display = 'inline-block';
+            resetButton.style.display = 'inline-block';
+            settingsPanel.classList.remove('opacity-50', 'pointer-events-none');
 
-            displayResults(); // Show the final results
+            displayResults();
+            if (autoProgressionEnabled) {
+                applyAutoProgressionLogic();
+            }
         }
 
         // Function to display the calculated performance results
         function displayResults() {
-            resultsPanel.style.display = 'block'; // Make the results panel visible
+            resultsPanel.style.display = 'block';
             document.getElementById('totalTrials').textContent = totalTrials;
             document.getElementById('correctHits').textContent = correctHits;
             document.getElementById('omissionErrors').textContent = omissionErrors;
             document.getElementById('commissionErrors').textContent = commissionErrors;
 
-            // Calculate average reaction time for correct hits
             let avgRt = reactionTimes.length > 0
                 ? Math.round(reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length)
-                : 0; // If no correct hits, average is 0
+                : 0;
             document.getElementById('avgReactionTime').textContent = `${avgRt} مللي ثانية`;
         }
 
         // Function to reset the game to its initial state
         function resetGame() {
-            isRunning = false; // Ensure test is not running
-            clearTimeout(timeoutId); // Clear any active stimulus timeouts
-            clearTimeout(testTimerId); // Clear the overall test timer
+            isRunning = false;
+            clearTimeout(timeoutId);
+            clearTimeout(testTimerId);
 
-            stimulusDisplay.textContent = 'ابدأ'; // Reset stimulus display text
-            stimulusDisplay.className = 'display-area'; // Reset stimulus display styling
-            feedbackDisplay.textContent = ''; // Clear feedback message
-            startButton.style.display = 'inline-block'; // Show start button
-            stopButton.style.display = 'none'; // Hide stop button
-            resetButton.style.display = 'none'; // Hide reset button
-            resultsPanel.style.display = 'none'; // Hide results panel
-            settingsPanel.classList.remove('opacity-50', 'pointer-events-none'); // Re-enable settings panel
+            stimulusDisplay.textContent = 'ابدأ';
+            stimulusDisplay.className = 'display-area';
+            feedbackDisplay.textContent = '';
+            startButton.style.display = 'inline-block';
+            stopButton.style.display = 'none';
+            resetButton.style.display = 'none';
+            resultsPanel.style.display = 'none';
+            settingsPanel.classList.remove('opacity-50', 'pointer-events-none');
 
-            // Reset all performance metrics
             totalTrials = 0;
             correctHits = 0;
             omissionErrors = 0;
             commissionErrors = 0;
             reactionTimes = [];
             remainingTestTime = 0;
+            targetLetter = 'X'; // Reset target letter to default 'X' on full reset
+            
+            // Reset settings to their default initial values (from HTML attributes)
+            settings.stimulusDuration = parseInt(stimulusDurationInput.getAttribute('value'));
+            settings.interStimulusInterval = parseInt(interStimulusIntervalInput.getAttribute('value'));
+            settings.targetFrequency = parseInt(targetFrequencyInput.getAttribute('value')) / 100;
+            settings.testDuration = parseInt(testDurationInput.getAttribute('value')) * 1000;
+            settings.distractionMode = distractionModeToggle.hasAttribute('checked'); // Check if defaultChecked is true
+            settings.dynamicTargetLetter = dynamicTargetLetterToggle.hasAttribute('checked');
 
-            updateDifficultyLevel(); // Update difficulty on reset
+            stimulusDurationInput.value = settings.stimulusDuration;
+            interStimulusIntervalInput.value = settings.interStimulusInterval;
+            targetFrequencyInput.value = settings.targetFrequency * 100;
+            testDurationInput.value = settings.testDuration / 1000;
+            distractionModeToggle.checked = settings.distractionMode;
+            dynamicTargetLetterToggle.checked = settings.dynamicTargetLetter;
+            
+            stimulusDurationValue.textContent = settings.stimulusDuration;
+            interStimulusIntervalValue.textContent = settings.interStimulusInterval;
+            targetFrequencyValue.textContent = settings.targetFrequency * 100;
+            testDurationValue.textContent = settings.testDuration / 1000;
+
+            autoProgressionEnabled = false; // Disable auto progression on full reset
+            applyAutoProgressionButton.textContent = 'تطبيق التقدم التلقائي'; // Reset button text
+
+            updateInstructions(); // Update instructions to reflect 'X' as default target
+            updateDifficultyLevel();
         }
+
+        // --- New Auto Progression Logic Function ---
+        function applyAutoProgressionLogic() {
+            const targetAppearances = totalTrials * settings.targetFrequency; // Approximate number of 'X' shown
+            const nonTargetAppearances = totalTrials - targetAppearances;
+
+            // Calculate error rates
+            const omissionErrorRate = (targetAppearances > 0) ? (omissionErrors / targetAppearances) : 0;
+            const commissionErrorRate = (nonTargetAppearances > 0) ? (commissionErrors / nonTargetAppearances) : 0;
+            
+            let avgRt = reactionTimes.length > 0
+                ? reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length
+                : Infinity; // If no hits, RT is infinite
+
+            let shouldProgress = false;
+            // Criteria for progression: Very high accuracy AND good average reaction time
+            if (omissionErrorRate <= (1 - PROGRESSION_THRESHOLD_ACCURACY_OMISSION) && // Example: 1% or less omission errors
+                commissionErrorRate <= (1 - PROGRESSION_THRESHOLD_ACCURACY_COMMISSION) && // 1% or less commission errors
+                avgRt < MIN_RT_FOR_PROGRESSION) { // Average RT must be below the set threshold
+                 shouldProgress = true;
+            }
+
+            if (shouldProgress) {
+                let changed = false;
+                // Decrease stimulus duration if possible
+                if (settings.stimulusDuration > MIN_SD_ISI) {
+                    settings.stimulusDuration = Math.max(MIN_SD_ISI, settings.stimulusDuration - DIFFICULTY_STEP_MS);
+                    stimulusDurationInput.value = settings.stimulusDuration;
+                    stimulusDurationValue.textContent = settings.stimulusDuration;
+                    changed = true;
+                }
+                // Decrease inter-stimulus interval if possible
+                if (settings.interStimulusInterval > MIN_SD_ISI) {
+                    settings.interStimulusInterval = Math.max(MIN_SD_ISI, settings.interStimulusInterval - DIFFICULTY_STEP_MS);
+                    interStimulusIntervalInput.value = settings.interStimulusInterval;
+                    interStimulusIntervalValue.textContent = settings.interStimulusInterval;
+                    changed = true;
+                }
+
+                if (changed) {
+                    feedbackDisplay.textContent = 'تقدم المستوى تلقائيًا! تم تقليل صعوبة عرض الحرف والفاصل الزمني.';
+                    feedbackDisplay.className = 'feedback-message success';
+                } else {
+                    feedbackDisplay.textContent = 'لم يتم التقدم تلقائيًا. وصلت إلى أدنى إعدادات للسرعة أو تحتاج لمزيد من التدريب على الدقة.';
+                    feedbackDisplay.className = 'feedback-message info';
+                }
+            } else {
+                feedbackDisplay.textContent = 'لم يتم التقدم تلقائيًا. استمر في التدريب لتحسين الدقة ووقت الاستجابة.';
+                feedbackDisplay.className = 'feedback-message info';
+            }
+            updateDifficultyLevel(); // Update difficulty display after potential change
+        }
+
+        applyAutoProgressionButton.addEventListener('click', () => {
+            autoProgressionEnabled = !autoProgressionEnabled;
+            if (autoProgressionEnabled) {
+                applyAutoProgressionButton.textContent = 'التقدم التلقائي مفعل (إيقاف)';
+                feedbackDisplay.textContent = 'تم تفعيل التقدم التلقائي. سيتم تعديل الإعدادات بعد كل اختبار بناءً على أدائك.';
+                feedbackDisplay.className = 'feedback-message info';
+            } else {
+                applyAutoProgressionButton.textContent = 'تطبيق التقدم التلقائي';
+                feedbackDisplay.textContent = 'تم إلغاء تفعيل التقدم التلقائي.';
+                feedbackDisplay.className = 'feedback-message info';
+            }
+        });
+
 
         // Event Listeners for buttons and keyboard input
         startButton.addEventListener('click', startTest);
         stopButton.addEventListener('click', endTest);
         resetButton.addEventListener('click', resetGame);
-        document.addEventListener('keydown', handleKeyPress); // Listen for keyboard presses
+        document.addEventListener('keydown', handleKeyPress);
 
         // Initial setup of settings display values on page load
         stimulusDurationValue.textContent = stimulusDurationInput.value;
         interStimulusIntervalValue.textContent = interStimulusIntervalInput.value;
         targetFrequencyValue.textContent = targetFrequencyInput.value;
-        testDurationValue.textContent = parseInt(testDurationInput.value); // Ensure it's a number
+        testDurationValue.textContent = testDurationInput.value;
 
         // Handle touch events for mobile devices to simulate spacebar press
-        // Tapping the display area will act as a response
         stimulusDisplay.addEventListener('touchstart', (event) => {
-            event.preventDefault(); // Prevent default touch behavior (like scrolling)
-            handleKeyPress({ code: 'Space' }); // Simulate a spacebar key press
+            event.preventDefault();
+            handleKeyPress({ code: 'Space' });
         });
 
-        // Initialize difficulty level on page load
+        // Initialize difficulty level and instructions on page load
         updateDifficultyLevel();
+        updateInstructions(); // Call once on load to set initial instruction text
     </script>
 </body>
 </html>
